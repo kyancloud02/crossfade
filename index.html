@@ -79,6 +79,7 @@ input[type=range]{width:100%;accent-color:var(--c)}
 .lbl{font-size:10.5px;letter-spacing:1px;color:var(--dim);font-weight:600;margin-right:3px}
 .pads button{min-width:30px;padding:4px 7px;font-family:var(--mono);font-size:12px;font-weight:600}
 .pads .hot button.set{background:color-mix(in srgb,var(--c) 32%,var(--panel2));border-color:var(--c);color:#fff}
+.pads .loops .lbl.on{color:var(--ok)}
 .pads .loops button.on{background:var(--ok);color:#000;border-color:var(--ok)}
 .knobs{display:flex;gap:2px;justify-content:space-between;align-items:flex-start}
 .knob{width:50px;display:flex;flex-direction:column;align-items:center;cursor:ns-resize;user-select:none;touch-action:none}
@@ -530,7 +531,7 @@ class Deck{
       </div>
       <div class="pads">
         <div class="grp hot"><span class="lbl">HOT CUES</span>${[0,1,2,3].map(i=>`<button data-h="${i}" title="Click: set / jump · Right-click: clear">${i+1}</button>`).join('')}</div>
-        <div class="grp loops"><span class="lbl">LOOP</span>${[1,2,4,8,16].map(b=>`<button data-l="${b}" title="Loop ${b} beat${b>1?'s':''} from here (click again to exit)">${b}</button>`).join('')}</div>
+        <div class="grp loops"><span class="lbl">LOOP</span><button class="lsz" data-z="0.5" title="Halve the loop">½</button>${[1,2,4,8,16].map(b=>`<button data-l="${b}" title="Loop ${b} beat${b>1?'s':''} from here (click again to exit)">${b}</button>`).join('')}<button class="lsz" data-z="2" title="Double the loop">×2</button></div>
       </div>
       <div class="ctlgrid">
         <div class="ctl"><label>Tempo <span class="rateval">0.0%</span></label><input type="range" class="tempo" min="-16" max="16" step="0.1" value="0" title="Double-click to reset"></div>
@@ -563,6 +564,7 @@ class Deck{
     $$('.jmp',this.el).forEach(b=>b.onclick=()=>this.jump(+b.dataset.j));
     $$('[data-h]',this.el).forEach(b=>{b.onclick=e=>this.hotCue(+b.dataset.h,e.shiftKey||e.altKey);b.oncontextmenu=e=>{e.preventDefault();this.hotCue(+b.dataset.h,true);};});
     $$('[data-l]',this.el).forEach(b=>b.onclick=()=>this.setLoop(+b.dataset.l));
+    $$('.lsz',this.el).forEach(b=>b.onclick=()=>this.resizeLoop(+b.dataset.z));
     this.q('.sync').onclick=()=>this.sync();
     this.q('.tap').onclick=()=>this.tap();
     this.q('.edit').onclick=()=>this.track&&openEdit(this.track);
@@ -729,9 +731,14 @@ class Deck{
   setLoop(beats){
     if(!this.track)return;
     if(this.loop&&this.loop.beats===beats){this.loop=null;this.renderPads();return;}
-    const b=this.spb();if(!b){toast('Set this track’s BPM first (TAP along or ✎) so loops land on the beat.');return;}
+    const b=this.spb();if(!b){const tb=this.q('.tap');tb.classList.add('flash');setTimeout(()=>tb.classList.remove('flash'),900);toast('Loops need this track’s BPM: tap <b>TAP</b> along with the beat 4+ times, then hit the loop again.');return;}
     const start=this.loop?this.loop.start:this.time();
     this.loop={start,end:start+beats*b,beats};this.renderPads();
+  }
+  resizeLoop(z){
+    if(!this.loop)return toast('Start a loop first (1–16), then use ½ / ×2.');
+    const beats=this.loop.beats*z;if(beats<0.25||beats>64)return;
+    this.loop={start:this.loop.start,end:this.loop.start+beats*this.spb(),beats};this.renderPads();
   }
   vol(){return this.fader*this.xf*S.settings.master;}
   applyVol(){const v=this.vol();
@@ -800,6 +807,7 @@ class Deck{
     const t=this.track,hc=(t&&t.hotcues)||[];
     $$('[data-h]',this.el).forEach((b,i)=>{b.classList.toggle('set',hc[i]!=null);b.title=hc[i]!=null?`Cue ${i+1} at ${fmt(hc[i])} — click to jump, right-click to clear`:'Click to set a hot cue here';});
     $$('[data-l]',this.el).forEach(b=>b.classList.toggle('on',!!this.loop&&this.loop.beats===+b.dataset.l));
+    const lb=this.q('.loops .lbl');lb.textContent=this.loop&&![1,2,4,8,16].includes(this.loop.beats)?`LOOP ${this.loop.beats}`:'LOOP';lb.classList.toggle('on',!!this.loop);
     const hasB=!!this.spb();$$('.jmp',this.el).forEach(b=>b.textContent=+b.dataset.j<0?(hasB?'«4':'«8s'):(hasB?'4»':'8s»'));
   }
   renderPlay(){const p=this.isPlaying();const b=this.q('.play');b.textContent=p?'❚❚':'▶';b.classList.toggle('on',p);}
