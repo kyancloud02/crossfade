@@ -105,6 +105,8 @@ input[type=range]{width:100%;accent-color:var(--c)}
 .progress .hcs{position:absolute;inset:0;pointer-events:none}
 .progress .hc{position:absolute;top:0;bottom:0;width:3px;background:var(--ok)}
 .progress .loopz{position:absolute;top:0;bottom:0;background:#f5c84b55;display:none}
+.capnote{display:none;font-size:12px;line-height:1.45;color:#f7d28b;background:#2a200d;border:1px solid #6b4f1f;border-radius:9px;padding:7px 10px}
+.capnote b{color:#ffe2a8}
 .chk{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--dim);cursor:pointer}
 .stemchip{font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;background:#45e3a01f;color:var(--good);margin-left:4px}
 /* mixer */
@@ -538,6 +540,7 @@ class Deck{
         <div class="ctl"><label>Tempo <span class="rateval">0.0%</span></label><input type="range" class="tempo" min="-16" max="16" step="0.1" value="0" title="Double-click to reset"></div>
         <div class="ctl"><label>Volume <span class="volval">100</span></label><input type="range" class="vol" min="0" max="1" step="0.01" value="1"></div>
       </div>
+      <div class="capnote"></div>
       <div class="knobs fxk"></div>
       <div class="stems">
         <div class="stemhead"><span class="lbl">STEMS</span><span class="stemstat small"></span><button class="splitbtn">✂ Split stems</button></div>
@@ -780,6 +783,8 @@ class Deck{
     const t=this.track,local=this.type==='local';
     if(!this.k)return;
     for(const k of['low','mid','high','filter','echo','verb'])this.k[k].disable(!local);
+    const cn=this.q('.capnote');const stream=t&&!local;cn.style.display=stream?'block':'none';
+    if(stream)cn.innerHTML=`<b>${this.type==='yt'?'YouTube':'SoundCloud'} track:</b> play, ${this.type==='yt'?'tempo, ':''}volume, crossfader, hot cues and loops work. EQ, filter, FX, stems and the waveform need the song’s <b>audio file</b>; ${this.type==='yt'?'YouTube':'SoundCloud'} doesn’t let websites access its sound.`;
     this.k.stems.forEach(k=>k.disable(!(local&&this.stemMode)));
     $$('.mute',this.el).forEach(m=>m.disabled=!(local&&this.stemMode));
     const st=this.q('.stemstat'),btn=this.q('.splitbtn'),bar=this.q('.stembar');
