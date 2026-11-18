@@ -445,7 +445,7 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){cons
 function toast(msg,ms=3800){const t=document.createElement('div');t.className='toast';t.innerHTML=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),ms);}
 
 /* ---------- state ---------- */
-const DEFAULTS={spClientId:'',ytKey:'',mixLen:16,autoDJ:false,autoStems:true,bassSwap:true,scClientId:'',scSecret:'',mode:'build',master:1,weights:{key:1,tempo:1,energy:0.7,vibe:0.6}};
+const DEFAULTS={spClientId:'',ytKey:'',mixLen:16,autoDJ:false,autoStems:true,bassSwap:true,ytPref:'video',scClientId:'',scSecret:'',mode:'build',master:1,weights:{key:1,tempo:1,energy:0.7,vibe:0.6}};
 const S=lsGet('cf_state',null)||{tracks:[],learned:{pairs:{},artists:{}},history:[]};
 S.settings={...DEFAULTS,...(S.settings||{})};S.settings.weights={...DEFAULTS.weights,...S.settings.weights};
 S.learned=S.learned||{pairs:{},artists:{}};S.tracks=S.tracks||[];S.history=S.history||[];
@@ -527,6 +527,7 @@ class Deck{
         <button class="jmp" data-j="-1" title="Jump back">«8s</button><button class="jmp" data-j="1" title="Jump forward">8s»</button>
         <button class="sync" title="Match this deck's tempo to the other deck">SYNC</button>
         <button class="tap" title="Tap along to the beat to set this track's BPM">TAP</button>
+        <button class="swapv" title="Wrong video? Pick a different YouTube upload" style="display:none">⇄ Video</button>
         <button class="edit" title="Edit BPM / key / energy">✎</button>
       </div>
       <div class="pads">
@@ -568,6 +569,7 @@ class Deck{
     this.q('.sync').onclick=()=>this.sync();
     this.q('.tap').onclick=()=>this.tap();
     this.q('.edit').onclick=()=>this.track&&openEdit(this.track);
+    this.q('.swapv').onclick=()=>this.track&&openVideoPicker(this.track,this.id);
     this.q('.splitbtn').onclick=()=>{const t=this.track;if(!t)return;if(t.stems&&!this.stemMode)this.useStems(true);else requestStems(t);};
     this.q('.tempo').oninput=e=>{this.rate=1+(+e.target.value)/100;this.applyRate();};
     this.q('.tempo').ondblclick=()=>{this.rate=1;this.q('.tempo').value=0;this.applyRate();};
@@ -801,6 +803,7 @@ class Deck{
     const k=this.q('.key');k.textContent=t&&t.key?`${t.key} · ${keyName(t.key)}`:'— key';
     k.style.cssText=t&&t.key?`color:hsl(${keyHue(t.key)} 90% 72%);border-color:hsl(${keyHue(t.key)} 60% 35%)`:'';
     this.q('.srcl').textContent=t?srcLabel(t)+(this.stemMode?' · stems':'')+(t.energy!=null?` · energy ${t.energy}/10`:''):'';
+    this.q('.swapv').style.display=t&&this.type==='yt'?'':'none';
     this.renderPlay();this.renderPads();this.updateCaps();
   }
   renderPads(){
@@ -1032,10 +1035,11 @@ function onDeckEnded(d){
 }
 async function loadTo(deck,track,opts={}){
   if(!track)return;
+  if((track.source==='spotify'||track.source==='csv')&&track.yt&&!track.ytCands&&S.settings.ytKey){try{await ytFindBest(track);}catch(e){}}// re-match songs picked by the old first-result method
   if(track.source!=='local'&&!track.yt&&!track.sc){
     if(S.settings.ytKey){
       toast(`Finding “${esc(track.title)}” on YouTube…`,2000);
-      try{const r=await ytSearch(`${track.artist} ${track.title}`,5);if(r.length){track.yt=r[0].id;track.ytAlts=r.slice(1).map(x=>x.id);save();}}
+      try{await ytFindBest(track);}
       catch(e){toast('YouTube search failed: '+esc(e.message));}
     }
     if(!track.yt){openEdit(track,{needLink:true,deck:deck.id});return;}
@@ -1192,6 +1196,64 @@ async function ytSearch(q,n=8){
   const j=await ytApiGet('search',{part:'snippet',type:'video',videoEmbeddable:'true',maxResults:n,q});
   return j.items.map(i=>({id:i.id.videoId,title:decodeHtml(i.snippet.title),channel:i.snippet.channelTitle,thumb:i.snippet.thumbnails?.default?.url}));
 }
+/* ---- matching a song to the right YouTube upload ---- */
+const ytNorm=s=>(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const YT_BAD=['live','cover','karaoke','reaction','lyrics','lyric','sped up','slowed','reverb','8d','nightcore','instrumental','1 hour','hour','loop','remix','edit','tutorial','piano','acoustic','concert','fan made','fanmade','teaser','trailer','behind the scenes','shorts','bass boosted','mashup','extended','visualizer','audio only'];
+function scoreYtCandidate(c,t,pref){
+  const vt=ytNorm(c.title),ch=ytNorm(c.channel),full=ytNorm(t.title);
+  const ti=ytNorm((t.title||'').replace(/\s*[\(\[].*?[\)\]]/g,'').replace(/\s+-\s+.*$/,''));
+  const ar=ytNorm((t.artist||'').split(/,|&| feat\.? | ft\.? | x /i)[0]);
+  let s=0;const why=[];
+  const tw=ti.split(' ').filter(w=>w.length>1);const hit=tw.filter(w=>new RegExp('\\b'+w+'\\b').test(vt)).length/(tw.length||1);s+=hit*40;
+  const arC=ar.replace(/ /g,''),chC=ch.replace(/ /g,'');
+  if(ar&&(vt.includes(ar)||chC.includes(arC))){s+=25;}
+  const official=/vevo$/.test(chC)||(arC&&(chC===arC||chC===arC+'official'||chC===arC+'music'))||/ topic$/.test(ch);
+  if(official){s+=15;why.push('official channel');}
+  const isMV=/\bofficial (music )?video\b|\bmusic video\b|\bofficial mv\b|\bmv\b/.test(vt);
+  const isAudio=/\bofficial audio\b|\baudio\b/.test(vt)||/ topic$/.test(ch);
+  if(pref==='audio'){if(isAudio){s+=25;why.push('official audio');}else if(isMV)s+=5;}
+  else{if(isMV){s+=30;why.push('music video');}else if(isAudio)s-=5;}
+  for(const b of YT_BAD){const re=new RegExp('\\b'+b+'\\b');if(re.test(vt)&&!re.test(full)){s-=22;why.push(b);break;}}
+  if(c.dur&&t.dur){const d=Math.abs(c.dur-t.dur);if(d>120)s-=25;else if(d>45)s-=10;}
+  return{s,why};
+}
+async function ytCandidates(t){
+  const pref=S.settings.ytPref||'video';
+  const q=`${(t.artist||'').split(',')[0]} ${t.title} ${pref==='audio'?'official audio':'official music video'}`;
+  const j=await ytApiGet('search',{part:'snippet',type:'video',videoEmbeddable:'true',maxResults:12,q});
+  let c=j.items.map(i=>({id:i.id.videoId,title:decodeHtml(i.snippet.title),channel:i.snippet.channelTitle,thumb:i.snippet.thumbnails?.medium?.url||i.snippet.thumbnails?.default?.url}));
+  if(c.length){try{const d=await ytApiGet('videos',{part:'contentDetails',id:c.map(x=>x.id).join(',')});
+    const dur={};for(const it of d.items){const m=it.contentDetails.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)||[];dur[it.id]=(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0);}
+    c.forEach(x=>x.dur=dur[x.id]);}catch(e){}}
+  c.forEach(x=>{const r=scoreYtCandidate(x,t,pref);x.score=r.s;x.why=r.why;});
+  c.sort((a,b)=>b.score-a.score);
+  return c;
+}
+async function ytFindBest(t){
+  const c=await ytCandidates(t);if(!c.length)return false;
+  t.yt=c[0].id;t.ytAlts=c.slice(1,6).map(x=>x.id);t.ytCands=c.slice(0,8).map(({id,title,channel,thumb,dur})=>({id,title,channel,thumb,dur}));save();return true;
+}
+function openVideoPicker(t,deckId){
+  const render=list=>{
+    $('#vpl').innerHTML=list.length?list.map((x,i)=>`<div class="li" style="cursor:pointer" data-i="${i}"><img src="${esc(x.thumb||'')}" alt="" style="width:96px;height:54px"><div class="grow"><div class="tt">${esc(x.title)}</div><div class="ta">${esc(x.channel)}${x.dur?' · '+fmt(x.dur):''}</div></div>${x.id===t.yt?'<span class="badge" style="color:var(--good)">playing</span>':'<button>Use this</button>'}</div>`).join(''):'<div class="small">No results.</div>';
+    $$('#vpl .li').forEach(el=>el.onclick=()=>{const x=list[+el.dataset.i];if(x.id===t.yt){closeModal();return;}t.yt=x.id;t.ytAlts=list.filter(y=>y.id!==x.id).slice(0,5).map(y=>y.id);t.ytCands=list.slice(0,8);delete t._needsMeta;save();closeModal();
+      const d=Object.values(decks).find(d=>d.track===t)||(deckId&&decks[deckId]);if(d)loadTo(d,t,{force:true});toast('Got it — that video is saved for this song.');});
+  };
+  openModal(`<div class="mhead"><h2>Pick the right video</h2><button class="x">✕</button></div>
+    <div class="small">${esc(t.artist)} — ${esc(t.title)}${t.dur?' · '+fmt(t.dur):''}</div>
+    <div style="display:flex;gap:8px"><input type="text" id="vpq" style="flex:1" value="${esc(`${(t.artist||'').split(',')[0]} ${t.title}`)}"><button id="vpgo">Search</button></div>
+    <div class="list" id="vpl" style="max-height:420px"><div class="small">${t.ytCands?'':'Searching…'}</div></div>
+    <div class="note">Or paste any YouTube link with ✎ Edit. Your pick is remembered.</div>`);
+  const search=async q=>{if(!S.settings.ytKey){$('#vpl').innerHTML='<div class="small">Add a YouTube API key in Settings to search here.</div>';return;}
+    $('#vpl').innerHTML='<div class="small">Searching…</div>';
+    try{const j=await ytApiGet('search',{part:'snippet',type:'video',videoEmbeddable:'true',maxResults:12,q});
+      const list=j.items.map(i=>({id:i.id.videoId,title:decodeHtml(i.snippet.title),channel:i.snippet.channelTitle,thumb:i.snippet.thumbnails?.medium?.url}));
+      list.forEach(x=>{x.score=scoreYtCandidate(x,t,S.settings.ytPref||'video').s;});list.sort((a,b)=>b.score-a.score);render(list);}
+    catch(e){$('#vpl').innerHTML=`<div class="small" style="color:var(--bad)">${esc(e.message)}</div>`;}};
+  $('#vpgo').onclick=()=>search($('#vpq').value);$('#vpq').onkeydown=e=>{if(e.key==='Enter')search($('#vpq').value);};
+  if(t.ytCands&&t.ytCands.length)render(t.ytCands);else search($('#vpq').value+(S.settings.ytPref==='audio'?' official audio':' official music video'));
+}
+
 function decodeHtml(s){const t=document.createElement('textarea');t.innerHTML=s;return t.value;}
 async function ytMeta(ids){
   const out={};
@@ -1491,6 +1553,7 @@ function openEdit(t,opts={}){
   const camOpts=[];for(let n=1;n<=12;n++)for(const l of['A','B'])camOpts.push(n+l);
   const ytq=encodeURIComponent(`${t.artist} ${t.title}`);
   openModal(`<div class="mhead"><h2>${opts.needLink?'Find this on YouTube':'Edit track'}</h2><button class="x">✕</button></div>
+    ${t.source!=='youtube'&&t.source!=='local'&&t.source!=='soundcloud'&&t.yt?`<div class="small"><a href="#" id="epick">⇄ Pick a different YouTube video</a></div>`:''}
     ${opts.needLink?`<div class="note">“${esc(t.title)}” came from ${t.source==='spotify'?'Spotify':'a list'}, so it needs a YouTube link to play. <a href="https://www.youtube.com/results?search_query=${ytq}" target="_blank">Search YouTube ↗</a>, copy the video’s link and paste it below. (Add a YouTube API key in Settings to do this automatically.)</div>`:''}
     <div class="frow"><div class="field"><label>Title</label><input type="text" id="et" value="${esc(t.title)}"></div><div class="field"><label>Artist</label><input type="text" id="ea" value="${esc(t.artist||'')}"></div></div>
     <div class="frow">
@@ -1502,6 +1565,7 @@ function openEdit(t,opts={}){
     ${t.source!=='local'&&t.source!=='soundcloud'?`<div class="field"><label>YouTube link ${t.yt?'(currently '+esc(t.yt)+')':''}</label><input type="text" id="ey" placeholder="https://www.youtube.com/watch?v=…" value="${t.yt?'https://youtu.be/'+esc(t.yt):''}"></div>`:''}
     ${t.spUrl?`<div class="small"><a href="${esc(t.spUrl)}" target="_blank">Open in Spotify ↗</a></div>`:''}
     <div style="display:flex;gap:8px;justify-content:flex-end"><button class="x">Cancel</button><button class="primary" id="esave">${opts.needLink?'Save & load':'Save'}</button></div>`);
+  const ep=$('#epick');if(ep)ep.onclick=e=>{e.preventDefault();openVideoPicker(t);};
   let eTouched=t.energy!=null;
   $('#ee').oninput=e=>{eTouched=true;$('#evl').textContent=e.target.value;};
   $('#eks').onchange=e=>{if(e.target.value)$('#ek').value=e.target.value;};
@@ -1524,13 +1588,14 @@ function openEdit(t,opts={}){
 function openSettings(){
   openModal(`<div class="mhead"><h2>Settings</h2><button class="x">✕</button></div>
     <div class="field"><label>YouTube Data API key (optional — enables search, playlists, auto-matching Spotify songs)</label><input type="password" id="sy" value="${esc(S.settings.ytKey)}" placeholder="AIza…"></div>
+    <div class="field"><label>When finding Spotify songs on YouTube, prefer</label><select id="sypref"><option value="video" ${S.settings.ytPref!=='audio'?'selected':''}>Official music video</option><option value="audio" ${S.settings.ytPref==='audio'?'selected':''}>Official audio (no video intro/outro — cleaner for mixing)</option></select></div>
     <div class="field"><label>Spotify Client ID (see Add music → Spotify)</label><input type="text" id="ss" value="${esc(S.settings.spClientId)}"></div>
     <label class="chk"><input type="checkbox" id="sauto" ${S.settings.autoStems?'checked':''}> Automatically split audio files into stems when loaded on a deck (after the first split)</label>
     <div class="note">Redirect URI to register with Spotify: <code>${esc(redirectUri())}</code></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="ssave">Save</button><button id="sexp">Copy library backup</button><button id="simp">Restore backup</button><button id="sforget">Reset learned preferences</button><button id="sstems">Clear saved stems</button><button id="sclear" style="color:var(--bad)">Clear library</button></div>
     <textarea id="sbox" rows="4" placeholder="Backup JSON appears here / paste one to restore" style="display:none"></textarea><div class="small" id="sst"></div>`);
   $('#sstems').onclick=async()=>{await clearStemCache();$('#sst').textContent='Saved stems cleared (the AI model stays cached).';};
-  $('#ssave').onclick=()=>{S.settings.ytKey=$('#sy').value.trim();S.settings.spClientId=$('#ss').value.trim();S.settings.autoStems=$('#sauto').checked;save();closeModal();toast('Saved');};
+  $('#ssave').onclick=()=>{S.settings.ytKey=$('#sy').value.trim();S.settings.spClientId=$('#ss').value.trim();S.settings.autoStems=$('#sauto').checked;S.settings.ytPref=$('#sypref').value;save();closeModal();toast('Saved');};
   $('#sexp').onclick=async()=>{const j=JSON.stringify({tracks:S.tracks.map(({peaks,...t})=>t),learned:S.learned});const b=$('#sbox');b.style.display='';b.value=j;try{await navigator.clipboard.writeText(j);$('#sst').textContent='Copied to clipboard.';}catch(e){b.select();$('#sst').textContent='Select-all and copy the text above.';}};
   $('#simp').onclick=()=>{const b=$('#sbox');if(b.style.display==='none'){b.style.display='';$('#sst').textContent='Paste a backup above, then click Restore again.';return;}
     try{const j=JSON.parse(b.value);addTracks(j.tracks||[]);if(j.learned)S.learned=j.learned;save();$('#sst').textContent='Restored.';}catch(e){$('#sst').textContent='That isn’t a valid backup.';}};
