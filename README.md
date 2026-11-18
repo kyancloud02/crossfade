@@ -1,53 +1,32 @@
-```
-CROSSFADE — a two-deck DJ app that suggests what to mix next
-=============================================================
+# Crossfade
 
-OPEN IT
-  Online:  https://kyancloud02.github.io/crossfade/  (nothing to install)
+A two-deck DJ app in your browser that suggests what to mix next.
 
-  Or run it offline on your own computer:
-  Mac:     double-click "Start Crossfade (Mac).command"
-           (first time: if macOS blocks it, right-click it → Open → Open)
-  Windows: double-click "Start Crossfade (Windows).bat"
-  Your browser opens at http://127.0.0.1:8765 — keep the little terminal
-  window open while you play. Needs Python (built into most Macs;
-  Windows: python.org/downloads). Chrome or Edge recommended.
+**Open it:** https://kyancloud02.github.io/crossfade/ (once GitHub Pages is on), or run it offline with the Start file for your computer.
 
-ADD MUSIC  (+ Add music button)
-  • Links    – paste YouTube or SoundCloud links, one per line.
-  • Files    – drop MP3/WAV/AIFF/FLAC files. BPM, key and energy are
-               detected automatically, and you get full tempo, sync, EQ
-               and key lock.
-  • Spotify  – imports your Liked Songs and playlists (one-time setup of
-               a free Spotify developer app; steps are in the tab).
-               Spotify doesn't let other apps mix its audio, so those
-               songs play through a matching YouTube upload.
-  • Search   – search YouTube inside the app (needs a free YouTube API
-               key; steps are in the tab). The key also lets Spotify songs
-               find their YouTube version automatically.
-  • CSV      – Exportify / rekordbox / Serato / Mixed In Key exports.
+## What's in it
+- **Two decks** you can play at the same time, with a crossfader (centre = both full), channel volume, tempo, SYNC, key lock, CUE, TAP-for-BPM
+- **Knobs** for Low / Mid / High (with kill), Filter (low-pass ↔ high-pass), Echo (beat-synced) and Reverb
+- **Stems**: split a song into **Drums / Bass / Melody / Vocals** with a knob and MUTE for each. It uses Meta's Demucs AI model running in your browser; the 172 MB model downloads once, and each song is split once and saved
+- **Hot cues** (4 per track) and **beat loops** (1–16 beats), plus 4-beat jumps
+- **Up next**: ranks your library by key compatibility (Camelot wheel), tempo, energy flow (Build / Hold / Cool down) and genre, and learns from your 👍/👎
+- **Auto DJ**: queues the best match and mixes it in, with an automatic **bass swap** halfway through
+- Music from **YouTube, SoundCloud, Spotify, audio files and CSV**, including YouTube playlists, SoundCloud sets and Spotify playlists/albums (paste the link)
 
-HOW SUGGESTIONS WORK
-  "Up next" ranks your whole library against what's playing:
-  • Key: Camelot-wheel compatibility (same key, ±1, relative maj/min…)
-  • Tempo: within a few % (half/double time counts)
-  • Energy flow: Build ↗ / Hold → / Cool down ↘
-  • Vibe: shared genres and playlists
-  • What you like: finished mixes and 👍/👎 teach it over time
-  Tracks from YouTube/Spotify don't come with BPM/key. Hit TAP on a deck
-  in time with the beat (or ✎ to type them in) and suggestions get much
-  sharper.
+## What works with each source
+| | Play & mix | BPM/key auto-detect | EQ / Filter / FX | Stems |
+|---|---|---|---|---|
+| Audio files | ✅ | ✅ | ✅ | ✅ |
+| SoundCloud | ✅ | TAP | full-control mode only* | full-control mode only* |
+| YouTube | ✅ | TAP | — | — |
+| Spotify | ✅ via YouTube match | TAP | — | — |
 
-AUTO DJ
-  Toggle it on and it queues the best match on the free deck and mixes it
-  in for the "Mix length" before each track ends.
+\*SoundCloud full control needs your own SoundCloud developer app (currently requires Artist Pro). YouTube and Spotify never let web apps access their audio, so a song's audio file is the way to get every control.
 
-KEYS:  Q / P play deck A / B · ← → crossfader · M mix to the other deck
+## Keys
+`Q` / `P` play A / B · `←` `→` crossfader · `M` mix to the other deck · `1`–`4` mute deck A stems · `7`–`0` mute deck B stems
 
-LIMITS
-  YouTube: no EQ; tempo snaps to the speeds YouTube allows.
-  SoundCloud: volume and crossfader only. Some uploads block embedding;
-  Crossfade will try another version or ask you for a link.
-  Your library is stored in the browser you use it in (it doesn't sync
-  between computers or between the online and offline copies).
-```
+## Run offline
+Mac: double-click `Start Crossfade (Mac).command` (first time: right-click → Open). Windows: double-click `Start Crossfade (Windows).bat` (needs Python). It opens http://127.0.0.1:8765. Splitting stems still needs internet the first time, to download the model.
+
+Stem splitting uses [demucs-web](https://github.com/timcsy/demucs-web) (MIT) and Meta's [Demucs](https://github.com/facebookresearch/demucs) (MIT).

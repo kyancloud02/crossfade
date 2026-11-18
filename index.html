@@ -72,9 +72,40 @@ main{padding:14px 18px 40px;display:grid;gap:14px}
 .ctl label{display:flex;justify-content:space-between;font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px}
 .ctl label span{font-family:var(--mono);color:var(--text);text-transform:none;letter-spacing:0}
 input[type=range]{width:100%;accent-color:var(--c)}
-.eqrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.eqrow.disabled{opacity:.35;pointer-events:none}
 .small{font-size:12px;color:var(--dim)}
+
+.pads{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.pads .grp{display:flex;gap:4px;align-items:center}
+.lbl{font-size:10.5px;letter-spacing:1px;color:var(--dim);font-weight:600;margin-right:3px}
+.pads button{min-width:30px;padding:4px 7px;font-family:var(--mono);font-size:12px;font-weight:600}
+.pads .hot button.set{background:color-mix(in srgb,var(--c) 32%,var(--panel2));border-color:var(--c);color:#fff}
+.pads .loops button.on{background:var(--ok);color:#000;border-color:var(--ok)}
+.knobs{display:flex;gap:2px;justify-content:space-between;align-items:flex-start}
+.knob{width:50px;display:flex;flex-direction:column;align-items:center;cursor:ns-resize;user-select:none;touch-action:none}
+.knob svg{width:44px;height:44px;overflow:visible}
+.knob .kbg{fill:#0e0e15;stroke:#2c2c40;stroke-width:1}
+.knob .ktrack{fill:none;stroke:#23233a;stroke-width:3.5;stroke-linecap:round}
+.knob .karc{fill:none;stroke:var(--c);stroke-width:3.5;stroke-linecap:round}
+.knob .kptr{stroke:#fff;stroke-width:2.2;stroke-linecap:round}
+.knob .kv{font-family:var(--mono);font-size:10.5px;margin-top:-1px}
+.knob .kl{font-size:9.5px;letter-spacing:.8px;color:var(--dim);font-weight:600;text-transform:uppercase}
+.knob.off{opacity:.28;pointer-events:none}
+.ksep{width:1px;background:var(--line);align-self:stretch;margin:4px 2px}
+.stems{border:1px solid var(--line);border-radius:10px;padding:8px 8px 6px;background:#0f0f16}
+.stemhead{display:flex;align-items:center;gap:8px;margin-bottom:4px;min-height:26px}
+.stemhead .stemstat{flex:1;line-height:1.3}
+.splitbtn{font-size:12px;font-weight:600;padding:4px 9px;white-space:nowrap}
+.stems .knobs{justify-content:space-around}
+.stemcell{display:flex;flex-direction:column;align-items:center;gap:4px}
+.stemcell .mute{padding:2px 8px;font-size:10px;font-weight:700;font-family:var(--mono)}
+.stemcell .mute.on{background:var(--bad);color:#000;border-color:var(--bad)}
+.stembar{height:3px;border-radius:2px;background:#1b1b27;overflow:hidden;margin-bottom:6px;display:none}
+.stembar div{height:100%;width:0;background:linear-gradient(90deg,var(--a),var(--b));transition:width .3s}
+.progress .hcs{position:absolute;inset:0;pointer-events:none}
+.progress .hc{position:absolute;top:0;bottom:0;width:3px;background:var(--ok)}
+.progress .loopz{position:absolute;top:0;bottom:0;background:#f5c84b55;display:none}
+.chk{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--dim);cursor:pointer}
+.stemchip{font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;background:#45e3a01f;color:var(--good);margin-left:4px}
 /* mixer */
 .mixer{padding:12px;display:flex;flex-direction:column;gap:12px}
 .mixer h3,.panel-h{margin:0;font-size:11.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);font-weight:600}
@@ -176,6 +207,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-r
   <div class="logo"><i></i>Crossfade</div>
   <span class="small" id="libcount"></span>
   <div class="sp"></div>
+  <span class="badge" id="stemPill" style="display:none;max-width:360px;overflow:hidden;text-overflow:ellipsis"></span>
   <div class="toggle" id="autodj" title="Auto DJ: picks the next track and mixes it in for you"><div class="dot"></div><span>Auto DJ</span></div>
   <button id="btnAdd" class="primary">+ Add music</button>
   <button id="btnSettings">Settings</button>
@@ -188,7 +220,7 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-r
     <div class="card mixer">
       <h3>Mixer</h3>
       <div class="xf">
-        <input type="range" id="xfader" min="0" max="1000" value="0">
+        <input type="range" id="xfader" min="0" max="1000" value="500" title="Middle = both decks full. Double-click to centre.">
         <div class="ends"><b>A</b><span class="small">crossfader</span><b>B</b></div>
       </div>
       <div class="mixbtns">
@@ -197,9 +229,10 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-r
       </div>
       <div class="mixing-bar"><div id="mixProg"></div></div>
       <div class="ctl"><label>Mix length <span id="mixLenVal">16s</span></label><input type="range" id="mixLen" min="4" max="48" step="2" value="16"></div>
+      <label class="chk" title="During a mix on audio files: hold the incoming bass back, then swap basslines halfway"><input type="checkbox" id="bassSwap"> Bass swap during mixes</label>
       <div class="ctl"><label>Master <span id="masterVal">100%</span></label><input type="range" id="master" min="0" max="1" step="0.01" value="1"></div>
       <div class="compat" id="compat"><div class="small">Load two tracks to see how well they blend.</div></div>
-      <div class="small" style="line-height:1.6"><kbd>Q</kbd>/<kbd>P</kbd> play A/B · <kbd>←</kbd><kbd>→</kbd> fader · <kbd>M</kbd> mix</div>
+      <div class="small" style="line-height:1.6"><kbd>Q</kbd>/<kbd>P</kbd> play A/B · <kbd>←</kbd><kbd>→</kbd> fader · <kbd>M</kbd> mix<br><kbd>1</kbd>–<kbd>4</kbd> mute A stems · <kbd>7</kbd>–<kbd>0</kbd> mute B stems</div>
     </div>
     <div class="card deck" id="deckB" data-d="B"></div>
   </section>
@@ -411,7 +444,7 @@ function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){cons
 function toast(msg,ms=3800){const t=document.createElement('div');t.className='toast';t.innerHTML=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),ms);}
 
 /* ---------- state ---------- */
-const DEFAULTS={spClientId:'',ytKey:'',mixLen:16,autoDJ:false,mode:'build',master:1,weights:{key:1,tempo:1,energy:0.7,vibe:0.6}};
+const DEFAULTS={spClientId:'',ytKey:'',mixLen:16,autoDJ:false,autoStems:true,bassSwap:true,scClientId:'',scSecret:'',mode:'build',master:1,weights:{key:1,tempo:1,energy:0.7,vibe:0.6}};
 const S=lsGet('cf_state',null)||{tracks:[],learned:{pairs:{},artists:{}},history:[]};
 S.settings={...DEFAULTS,...(S.settings||{})};S.settings.weights={...DEFAULTS.weights,...S.settings.weights};
 S.learned=S.learned||{pairs:{},artists:{}};S.tracks=S.tracks||[];S.history=S.history||[];
@@ -433,11 +466,45 @@ function loadScript(src){return new Promise((res,rej)=>{const s=document.createE
 let ytApiP=null;function ytApi(){return ytApiP||(ytApiP=new Promise((res,rej)=>{if(window.YT&&YT.Player)return res();window.onYouTubeIframeAPIReady=res;loadScript('https://www.youtube.com/iframe_api').catch(rej);}));}
 let scApiP=null;function scApi(){return scApiP||(scApiP=loadScript('https://w.soundcloud.com/player/api.js'));}
 
+/* ================= Knob ================= */
+function makeKnob(o){
+  const{label,min=0,max=1,value=0,def=value,fmt=v=>v.toFixed(2),onChange=()=>{},color,from}=o;
+  const el=document.createElement('div');el.className='knob';el.title=(o.title||label)+' — drag up/down · double-click resets · shift = fine';
+  if(color)el.style.setProperty('--c',color);
+  el.innerHTML=`<svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="15" class="kbg"/><path class="ktrack"/><path class="karc"/><line x1="22" y1="22" x2="22" y2="9" class="kptr"/></svg><div class="kv"></div><div class="kl">${label}</div>`;
+  let v=value,dis=false;const A0=-135,A1=135;
+  const ang=x=>A0+(x-min)/(max-min)*(A1-A0);
+  const pt=a=>{const r=(a-90)*Math.PI/180;return(22+19*Math.cos(r)).toFixed(2)+' '+(22+19*Math.sin(r)).toFixed(2);};
+  const arc=(a0,a1)=>a1-a0<0.5?'':`M${pt(a0)} A19 19 0 ${a1-a0>180?1:0} 1 ${pt(a1)}`;
+  const arcEl=el.querySelector('.karc'),ptr=el.querySelector('.kptr'),kv=el.querySelector('.kv');
+  el.querySelector('.ktrack').setAttribute('d',arc(A0,A1));
+  const base=ang(from!=null?from:min);
+  function draw(){const a=ang(v);arcEl.setAttribute('d',arc(Math.min(a,base),Math.max(a,base)));ptr.setAttribute('transform',`rotate(${a.toFixed(1)} 22 22)`);kv.textContent=fmt(v);}
+  function set(x,silent){v=clamp(x,min,max);if(o.snap!=null&&Math.abs(v-o.snap)<(max-min)*0.025)v=o.snap;draw();if(!silent)onChange(v);}
+  el.addEventListener('pointerdown',e=>{if(dis||e.button>0)return;e.preventDefault();el.setPointerCapture(e.pointerId);const y0=e.clientY,start=v;
+    const mv=ev=>set(start+(y0-ev.clientY)*(max-min)/(ev.shiftKey?700:170));
+    const up=()=>{el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);};
+    el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);});
+  el.addEventListener('dblclick',()=>{if(!dis)set(def);});
+  el.addEventListener('wheel',e=>{if(dis)return;e.preventDefault();set(v-Math.sign(e.deltaY)*(max-min)/40);},{passive:false});
+  draw();
+  return{el,set,get:()=>v,def,disable(b){dis=b;el.classList.toggle('off',b);}};
+}
+let revIR=null;
+function reverbIR(c){
+  if(revIR&&revIR.sampleRate===c.sampleRate)return revIR;
+  const len=Math.floor(c.sampleRate*2.6),b=c.createBuffer(2,len,c.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=b.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2);}
+  return revIR=b;
+}
+const STEMS=[{k:'drums',label:'Drums',color:'#ff9a4d'},{k:'bass',label:'Bass',color:'#5b8cff'},{k:'other',label:'Melody',color:'#45e3a0'},{k:'vocals',label:'Vocals',color:'#ff4fd8'}];
+
 /* ================= Deck ================= */
 class Deck{
   constructor(id){
     this.id=id;this.el=$('#deck'+id);this.track=null;this.type=null;this.fader=1;this.xf=id==='A'?1:0;this.rate=1;this.cue=0;
-    this.scPos=0;this.scDur=0;this.scPlaying=false;this.ytState=-1;this.tapTimes=[];this.loadedAt=0;
+    this.scPos=0;this.scDur=0;this.scPlaying=false;this.ytState=-1;this.tapTimes=[];this.loadedAt=0;this.loop=null;this.stemMode=false;
+    this.eqv={low:0,mid:0,high:0};this.filt=0;this.fx={echo:0,verb:0};this.stemv=[1,1,1,1];this.stemMute=[false,false,false,false];
     this.audio=new Audio();this.audio.preload='auto';this.audio.preservesPitch=true;
     this.audio.addEventListener('ended',()=>this.onEnded());
     this.audio.addEventListener('play',()=>this.renderPlay());this.audio.addEventListener('pause',()=>this.renderPlay());
@@ -451,50 +518,115 @@ class Deck{
         <div class="deck-title"><div class="t">Empty deck</div><div class="a">Load a track from the library or Up next</div></div>
         <div class="badges"><span class="badge bpm">— BPM</span><span class="badge key">—</span></div></div>
       <div class="media"><div class="yt-wrap"><div class="yt-host"></div></div><div class="sc-wrap"></div><canvas class="wave"></canvas><div class="empty show">Deck ${this.id} is empty</div></div>
-      <div class="progress"><div class="mixzone"></div><div class="fill"></div><div class="cuem"></div></div>
+      <div class="progress"><div class="mixzone"></div><div class="loopz"></div><div class="fill"></div><div class="hcs"></div><div class="cuem"></div></div>
       <div class="times"><span class="el">0:00</span><span class="srcl"></span><span class="rem">-0:00</span></div>
       <div class="transport">
-        <button class="cue" title="Paused: set cue here. Playing: jump back to cue">CUE</button>
+        <button class="cue" title="Paused: set cue here. Playing: jump back to cue and stop">CUE</button>
         <button class="play" title="Play / pause">▶</button>
-        <button data-n="-8">«8s</button><button data-n="8">8s»</button>
+        <button class="jmp" data-j="-1" title="Jump back">«8s</button><button class="jmp" data-j="1" title="Jump forward">8s»</button>
         <button class="sync" title="Match this deck's tempo to the other deck">SYNC</button>
         <button class="tap" title="Tap along to the beat to set this track's BPM">TAP</button>
         <button class="edit" title="Edit BPM / key / energy">✎</button>
       </div>
+      <div class="pads">
+        <div class="grp hot"><span class="lbl">HOT CUES</span>${[0,1,2,3].map(i=>`<button data-h="${i}" title="Click: set / jump · Right-click: clear">${i+1}</button>`).join('')}</div>
+        <div class="grp loops"><span class="lbl">LOOP</span>${[1,2,4,8,16].map(b=>`<button data-l="${b}" title="Loop ${b} beat${b>1?'s':''} from here (click again to exit)">${b}</button>`).join('')}</div>
+      </div>
       <div class="ctlgrid">
-        <div class="ctl"><label>Tempo <span class="rateval">0.0%</span></label><input type="range" class="tempo" min="-16" max="16" step="0.1" value="0"></div>
+        <div class="ctl"><label>Tempo <span class="rateval">0.0%</span></label><input type="range" class="tempo" min="-16" max="16" step="0.1" value="0" title="Double-click to reset"></div>
         <div class="ctl"><label>Volume <span class="volval">100</span></label><input type="range" class="vol" min="0" max="1" step="0.01" value="1"></div>
       </div>
-      <div class="eqrow">
-        <div class="ctl"><label>Low <span class="eqv" data-b="low">0</span></label><input type="range" class="eq" data-b="low" min="-26" max="6" step="1" value="0"></div>
-        <div class="ctl"><label>Mid <span class="eqv" data-b="mid">0</span></label><input type="range" class="eq" data-b="mid" min="-26" max="6" step="1" value="0"></div>
-        <div class="ctl"><label>High <span class="eqv" data-b="high">0</span></label><input type="range" class="eq" data-b="high" min="-26" max="6" step="1" value="0"></div>
+      <div class="knobs fxk"></div>
+      <div class="stems">
+        <div class="stemhead"><span class="lbl">STEMS</span><span class="stemstat small"></span><button class="splitbtn">✂ Split stems</button></div>
+        <div class="stembar"><div></div></div>
+        <div class="knobs stemk"></div>
       </div>
       <div class="small note-line"></div>`;
+    this.k={};
+    const fx=this.q('.fxk');
+    for(const[b,l]of[['low','Low'],['mid','Mid'],['high','High']]){
+      const db=v=>v<0?v*26:v*6;this.k[b]=makeKnob({label:l,min:-1,max:1,value:0,def:0,from:0,snap:0,title:l+' EQ: left = kill, centre = flat, right = +6 dB',fmt:v=>v<=-0.98?'kill':(v>0?'+':'')+Math.round(db(v)),onChange:v=>this.setEq(b,db(v))});fx.appendChild(this.k[b].el);}
+    fx.insertAdjacentHTML('beforeend','<div class="ksep"></div>');
+    this.k.filter=makeKnob({label:'Filter',min:-1,max:1,value:0,def:0,from:0,snap:0,title:'Filter: left = low-pass, right = high-pass',fmt:v=>Math.abs(v)<0.01?'off':v<0?'LP':'HP',onChange:v=>this.setFilter(v)});fx.appendChild(this.k.filter.el);
+    fx.insertAdjacentHTML('beforeend','<div class="ksep"></div>');
+    this.k.echo=makeKnob({label:'Echo',min:0,max:1,value:0,def:0,title:'Beat-synced echo (¾ beat)',fmt:v=>v<0.01?'off':Math.round(v*100),onChange:v=>this.setFx('echo',v)});fx.appendChild(this.k.echo.el);
+    this.k.verb=makeKnob({label:'Reverb',min:0,max:1,value:0,def:0,fmt:v=>v<0.01?'off':Math.round(v*100),onChange:v=>this.setFx('verb',v)});fx.appendChild(this.k.verb.el);
+    const sk=this.q('.stemk');this.k.stems=[];
+    STEMS.forEach((s,i)=>{const cell=document.createElement('div');cell.className='stemcell';
+      const kn=makeKnob({label:s.label,min:0,max:1.2,value:1,def:1,snap:1,color:s.color,fmt:v=>Math.round(v*100),onChange:v=>{this.stemv[i]=v;this.applyStems();}});
+      this.k.stems.push(kn);cell.appendChild(kn.el);
+      const m=document.createElement('button');m.className='mute';m.textContent='MUTE';m.title=`Mute / unmute ${s.label.toLowerCase()}`;
+      m.onclick=()=>this.toggleStem(i);cell.appendChild(m);sk.appendChild(cell);});
     this.q('.play').onclick=()=>{ac();this.toggle();};
     this.q('.cue').onclick=()=>{if(!this.track)return;if(this.isPlaying()){this.seek(this.cue);this.pause();}else{this.cue=this.time();this.renderProgress();}};
-    $$('[data-n]',this.el).forEach(b=>b.onclick=()=>this.seek(Math.max(0,this.time()+ +b.dataset.n)));
+    $$('.jmp',this.el).forEach(b=>b.onclick=()=>this.jump(+b.dataset.j));
+    $$('[data-h]',this.el).forEach(b=>{b.onclick=e=>this.hotCue(+b.dataset.h,e.shiftKey||e.altKey);b.oncontextmenu=e=>{e.preventDefault();this.hotCue(+b.dataset.h,true);};});
+    $$('[data-l]',this.el).forEach(b=>b.onclick=()=>this.setLoop(+b.dataset.l));
     this.q('.sync').onclick=()=>this.sync();
     this.q('.tap').onclick=()=>this.tap();
     this.q('.edit').onclick=()=>this.track&&openEdit(this.track);
+    this.q('.splitbtn').onclick=()=>{const t=this.track;if(!t)return;if(t.stems&&!this.stemMode)this.useStems(true);else requestStems(t);};
     this.q('.tempo').oninput=e=>{this.rate=1+(+e.target.value)/100;this.applyRate();};
-    this.q('.tempo').ondblclick=()=>{this.rate=1;this.applyRate();};
+    this.q('.tempo').ondblclick=()=>{this.rate=1;this.q('.tempo').value=0;this.applyRate();};
     this.q('.vol').oninput=e=>{this.fader=+e.target.value;this.q('.volval').textContent=Math.round(this.fader*100);this.applyVol();};
-    $$('.eq',this.el).forEach(r=>{r.oninput=()=>this.setEq(r.dataset.b,+r.value);r.ondblclick=()=>{r.value=0;this.setEq(r.dataset.b,0);};});
-    this.q('.progress').onclick=e=>{const d=this.duration();if(!d)return;const r=e.currentTarget.getBoundingClientRect();this.seek((e.clientX-r.left)/r.width*d);};
-    this.q('.wave').onclick=e=>{const d=this.duration();if(!d)return;const r=e.currentTarget.getBoundingClientRect();this.seek((e.clientX-r.left)/r.width*d);};
+    const seekAt=e=>{const d=this.duration();if(!d)return;const r=e.currentTarget.getBoundingClientRect();this.seek((e.clientX-r.left)/r.width*d);};
+    this.q('.progress').onclick=seekAt;this.q('.wave').onclick=seekAt;
+    this.updateCaps();
   }
+  /* ---- Web Audio graph (local files) ---- */
   ensureGraph(){
-    if(this.gain)return;const c=ac();
+    if(this.gain)return;const c=ac();const T=c.currentTime;
     this.src=c.createMediaElementSource(this.audio);
+    this.inNode=c.createGain();this.inNode.channelCount=2;this.inNode.channelCountMode='explicit';this.inNode.channelInterpretation='speakers';
+    this.split=c.createChannelSplitter(8);
+    this.stemG=STEMS.map((s,i)=>{const m=c.createChannelMerger(2);this.split.connect(m,2*i,0);this.split.connect(m,2*i+1,1);const g=c.createGain();m.connect(g).connect(this.inNode);return g;});
     this.low=c.createBiquadFilter();this.low.type='lowshelf';this.low.frequency.value=220;
     this.mid=c.createBiquadFilter();this.mid.type='peaking';this.mid.frequency.value=1000;this.mid.Q.value=0.7;
     this.high=c.createBiquadFilter();this.high.type='highshelf';this.high.frequency.value=3500;
+    this.hp=c.createBiquadFilter();this.hp.type='highpass';this.hp.frequency.value=10;this.hp.Q.value=0.9;
+    this.lp=c.createBiquadFilter();this.lp.type='lowpass';this.lp.frequency.value=c.sampleRate/2;this.lp.Q.value=0.9;
     this.gain=c.createGain();
-    this.src.connect(this.low).connect(this.mid).connect(this.high).connect(this.gain).connect(c.destination);
-    $$('.eq',this.el).forEach(r=>this.setEq(r.dataset.b,+r.value));this.applyVol();
+    this.inNode.connect(this.low).connect(this.mid).connect(this.high).connect(this.hp).connect(this.lp).connect(this.gain);
+    this.echoSend=c.createGain();this.echoSend.gain.value=0;this.delay=c.createDelay(2);this.echoFb=c.createGain();this.echoFb.gain.value=0.35;
+    this.echoTone=c.createBiquadFilter();this.echoTone.type='lowpass';this.echoTone.frequency.value=3200;
+    this.lp.connect(this.echoSend).connect(this.delay);this.delay.connect(this.echoTone).connect(this.echoFb).connect(this.delay);this.delay.connect(this.gain);
+    this.verbSend=c.createGain();this.verbSend.gain.value=0;this.conv=c.createConvolver();this.conv.buffer=reverbIR(c);
+    this.lp.connect(this.verbSend).connect(this.conv).connect(this.gain);
+    this.gain.connect(c.destination);
+    this.src.connect(this.inNode);
+    for(const b of['low','mid','high'])this.setEq(b,this.eqv[b]);this.setFilter(this.filt);this.setFx('echo',this.fx.echo);this.setFx('verb',this.fx.verb);
+    this.applyStems();this.applyVol();this.updateEcho();
   }
-  setEq(b,v){this.q(`.eqv[data-b=${b}]`).textContent=v>0?'+'+v:v;if(this[b])this[b].gain.setTargetAtTime(v,ac().currentTime,0.02);}
+  ramp(param,v,tc=0.015){param.setTargetAtTime(v,ac().currentTime,tc);}
+  setEq(b,v){this.eqv[b]=v;if(this[b])this.ramp(this[b].gain,v);}
+  setFilter(v){this.filt=v;if(!this.lp)return;const ny=ac().sampleRate/2;
+    this.ramp(this.lp.frequency,v<-0.01?20000*Math.pow(150/20000,-v):ny,0.02);
+    this.ramp(this.hp.frequency,v>0.01?20*Math.pow(7000/20,v):10,0.02);}
+  setFx(k,v){this.fx[k]=v;if(!this.echoSend)return;
+    if(k==='echo'){this.ramp(this.echoSend.gain,v*0.9);this.ramp(this.echoFb.gain,0.3+0.35*v);}
+    else this.ramp(this.verbSend.gain,v*0.9);}
+  updateEcho(){if(!this.delay)return;const b=this.effBpm();this.ramp(this.delay.delayTime,b?clamp(0.75*60/b,0.05,1.5):0.375,0.05);}
+  setStemMode(on){
+    this.stemMode=on;if(!this.src)return;
+    try{this.src.disconnect();}catch(e){}
+    this.src.connect(on?this.split:this.inNode);this.updateCaps();
+  }
+  applyStems(){if(!this.stemG)return;this.stemG.forEach((g,i)=>this.ramp(g.gain,this.stemMute[i]?0:this.stemv[i],0.01));
+    $$('.mute',this.el).forEach((m,i)=>m.classList.toggle('on',this.stemMute[i]));}
+  toggleStem(i){if(!this.stemMode)return;this.stemMute[i]=!this.stemMute[i];this.applyStems();}
+  async useStems(force){
+    const t=this.track;if(!t||this.type!=='local'||!t.stems||this.stemMode)return;
+    if(!force&&this.isPlaying()&&this.vol()>0.05){this.updateCaps();return;} // live & audible: wait for the user to switch
+    const blob=await getStemBlob(t);if(!blob||this.track!==t)return;
+    const at=this.time(),was=this.isPlaying();
+    if(this.objUrl)URL.revokeObjectURL(this.objUrl);this.objUrl=URL.createObjectURL(blob);
+    this.setStemMode(true);this.audio.src=this.objUrl;
+    await new Promise(r=>{this.audio.addEventListener('loadedmetadata',r,{once:true});this.audio.load();});
+    this.audio.currentTime=at;this.applyRate();if(was)this.audio.play().catch(()=>{});
+    this.updateCaps();
+  }
+  /* ---- players ---- */
   ytPlayer(){
     if(this._ytp)return this._ytp;
     this._ytp=ytApi().then(()=>new Promise(res=>{
@@ -540,26 +672,39 @@ class Deck{
   showMedia(kind){
     this.q('.yt-wrap').classList.toggle('show',kind==='yt');this.q('.sc-wrap').classList.toggle('show',kind==='sc');
     this.q('.wave').classList.toggle('show',kind==='local');this.q('.empty').classList.toggle('show',!kind);
-    this.q('.eqrow').classList.toggle('disabled',kind!=='local');
-    this.q('.note-line').textContent=kind==='yt'?'YouTube: EQ unavailable; tempo snaps to the speeds YouTube allows.':kind==='sc'?'SoundCloud: volume & crossfader only (no tempo/EQ).':'';
+    const t0=this.track;if(kind==='local'&&t0&&t0.source==='soundcloud'){this.q('.note-line').innerHTML=`Streaming in full from SoundCloud · uploader: ${esc(t0.artist||'')} · <a href="${esc(t0.sc)}" target="_blank">open on SoundCloud ↗</a>`;return;}
+    this.q('.note-line').textContent=kind==='yt'?'YouTube: EQ, filter, FX and stems need an audio file. Tempo snaps to the speeds YouTube allows.':kind==='sc'?'SoundCloud: volume, crossfader, cues and loops only.':'';
   }
   pauseAll(){try{this.audio.pause();}catch(e){}try{this.yt&&this.yt.pauseVideo();}catch(e){}try{this.sc&&this.sc.pause();}catch(e){}}
   async load(track,{autoplay=false}={}){
     this.pauseAll();
-    const kind=track.source==='local'?'local':track.sc?'sc':track.yt?'yt':null;
+    let kind=track.source==='local'?'local':track.sc?'sc':track.yt?'yt':null;
     if(!kind)return false;
+    let stemBlob=null,f=null;
     if(kind==='local'){
-      let f=localFiles.get(track.id)||await idb.get(track.id);
+      f=await getAudioBlob(track);
       if(!f){toast(`Drag “${esc(track.title)}” back in (Add music → Files) to play it again.`,5000);return false;}
-      localFiles.set(track.id,f);if(this.objUrl)URL.revokeObjectURL(this.objUrl);
-      this.objUrl=URL.createObjectURL(f);this.ensureGraph();this.audio.src=this.objUrl;this.audio.load();
+    }else if(kind==='sc'&&scFullReady()){
+      this.q('.empty').textContent='Loading full audio from SoundCloud…';this.showMedia(null);
+      try{f=await scFetchAudio(track);kind='local';}
+      catch(e){toast(`Full control unavailable for “${esc(track.title)}” (${esc(e.message)}). Using SoundCloud’s player instead.`,7000);}
+      this.q('.empty').textContent=`Deck ${this.id} is empty`;
+    }
+    if(kind==='local'){
+      if(track.stems){stemBlob=await getStemBlob(track);if(!stemBlob){track.stems=false;save();}}
+      if(this.objUrl)URL.revokeObjectURL(this.objUrl);
+      this.objUrl=URL.createObjectURL(stemBlob||f);this.ensureGraph();this.setStemMode(!!stemBlob);
+      this.audio.src=this.objUrl;this.audio.load();
       if(autoplay)this.audio.play().catch(()=>{});
     }
-    this.track=track;this.type=kind;this.cue=0;this.rate=1;this.q('.tempo').value=0;this.loadedAt=Date.now();this.autoFor=null;
+    this.track=track;this.type=kind;this.cue=0;this.rate=1;this.loop=null;this.q('.tempo').value=0;this.loadedAt=Date.now();this.autoFor=null;
+    this.stemMute=[false,false,false,false];this.applyStems();
     this.showMedia(kind);
     if(kind==='yt'){const p=await this.ytPlayer();this.ytState=-1;if(this.track!==track)return false;autoplay?p.loadVideoById(track.yt):p.cueVideoById(track.yt);}
     else if(kind==='sc')await this.scLoad(track.sc,autoplay);
-    this.applyRate();this.applyVol();this.render();this.drawWave();onDeckLoaded(this);
+    this.applyRate();this.applyVol();this.render();this.drawWave();this._cueDur=-1;onDeckLoaded(this);
+    if(kind==='local'&&!track.analyzed)analyzeInBackground(track,f);
+    if(kind==='local'&&!stemBlob&&S.settings.autoStems&&lsGet('cf_model_ok',false))requestStems(track,{auto:true});
     return true;
   }
   play(){if(!this.track)return;ac();
@@ -572,10 +717,25 @@ class Deck{
   isPlaying(){if(!this.track)return false;if(this.type==='local')return!this.audio.paused;if(this.type==='yt')return this.ytState===1||this.ytState===3;if(this.type==='sc')return this.scPlaying;return false;}
   time(){if(this.type==='local')return this.audio.currentTime||0;if(this.type==='yt'&&this.yt&&this.yt.getCurrentTime)return this.yt.getCurrentTime()||0;if(this.type==='sc')return this.scPos;return 0;}
   duration(){if(this.type==='local')return this.audio.duration||this.track?.dur||0;if(this.type==='yt'&&this.yt&&this.yt.getDuration)return this.yt.getDuration()||this.track?.dur||0;if(this.type==='sc')return this.scDur||this.track?.dur||0;return 0;}
-  seek(t){if(this.type==='local')this.audio.currentTime=t;else if(this.type==='yt'&&this.yt)this.yt.seekTo(t,true);else if(this.type==='sc'&&this.sc){this.sc.seekTo(t*1000);this.scPos=t;}this.renderProgress();}
+  seek(t){t=Math.max(0,t);if(this.type==='local')this.audio.currentTime=t;else if(this.type==='yt'&&this.yt)this.yt.seekTo(t,true);else if(this.type==='sc'&&this.sc){this.sc.seekTo(t*1000);this.scPos=t;}this.renderProgress();}
+  spb(){return this.track&&this.track.bpm?60/this.track.bpm:null;} // seconds per beat in track time
+  jump(dir){if(!this.track)return;const b=this.spb();this.seek(this.time()+dir*(b?4*b:8));}
+  hotCue(i,clear){
+    const t=this.track;if(!t)return;t.hotcues=t.hotcues||[null,null,null,null];
+    if(clear){t.hotcues[i]=null;}else if(t.hotcues[i]==null){t.hotcues[i]=Math.round(this.time()*100)/100;}
+    else{this.seek(t.hotcues[i]);if(!this.isPlaying())this.play();}
+    save();this._cueDur=-1;this.renderPads();
+  }
+  setLoop(beats){
+    if(!this.track)return;
+    if(this.loop&&this.loop.beats===beats){this.loop=null;this.renderPads();return;}
+    const b=this.spb();if(!b){toast('Set this track’s BPM first (TAP along or ✎) so loops land on the beat.');return;}
+    const start=this.loop?this.loop.start:this.time();
+    this.loop={start,end:start+beats*b,beats};this.renderPads();
+  }
   vol(){return this.fader*this.xf*S.settings.master;}
   applyVol(){const v=this.vol();
-    if(this.gain)this.gain.gain.setTargetAtTime(v,ac().currentTime,0.015);
+    if(this.gain&&this.type==='local')this.ramp(this.gain.gain,v);
     if(this.yt&&this.yt.setVolume)this.yt.setVolume(Math.round(v*100));
     if(this.sc)this.sc.setVolume(Math.round(v*100));}
   applyRate(){
@@ -585,7 +745,7 @@ class Deck{
     else if(this.type==='sc'){actual=1;}
     this.actualRate=actual;
     const pct=(actual-1)*100;this.q('.rateval').textContent=(pct>=0?'+':'')+pct.toFixed(1)+'%'+(Math.abs(actual-this.rate)>0.001?' (snapped)':'');
-    this.render();
+    this.updateEcho();this.render();
   }
   effBpm(){return this.track&&this.track.bpm?this.track.bpm*(this.actualRate||this.rate):null;}
   sync(){
@@ -604,9 +764,28 @@ class Deck{
     this.tapTimes.push(now);if(this.tapTimes.length>12)this.tapTimes.shift();
     const b=this.q('.tap');b.classList.add('flash');setTimeout(()=>b.classList.remove('flash'),90);
     if(this.tapTimes.length>=4){const n=this.tapTimes.length,avg=(this.tapTimes[n-1]-this.tapTimes[0])/(n-1);
-      const heard=60000/avg;this.track.bpm=Math.round(heard/(this.actualRate||this.rate)*10)/10;save();this.render();refresh();}
+      const heard=60000/avg;this.track.bpm=Math.round(heard/(this.actualRate||this.rate)*10)/10;save();this.render();this.renderPads();refresh();}
   }
   onEnded(){this.renderPlay();onDeckEnded(this);}
+  updateCaps(){
+    const t=this.track,local=this.type==='local';
+    if(!this.k)return;
+    for(const k of['low','mid','high','filter','echo','verb'])this.k[k].disable(!local);
+    this.k.stems.forEach(k=>k.disable(!(local&&this.stemMode)));
+    $$('.mute',this.el).forEach(m=>m.disabled=!(local&&this.stemMode));
+    const st=this.q('.stemstat'),btn=this.q('.splitbtn'),bar=this.q('.stembar');
+    const job=t&&stems.cur===t,queued=t&&stems.queue.includes(t);
+    bar.style.display=job?'block':'none';if(job)bar.firstChild.style.width=Math.round(stems.progress*100)+'%';
+    let msg='',b='';
+    if(!t)msg='Load an audio file to split it into drums, bass, melody and vocals.';
+    else if(!local)msg=t.source==='soundcloud'?'Connect SoundCloud full control (Add music → SoundCloud) to unlock EQ, FX and stems here.':'Stems need an audio file. YouTube/Spotify audio can’t be accessed by any web app.';
+    else if(this.stemMode)msg='Live — turn a stem down or MUTE it.';
+    else if(job)msg=`${stems.stage}… ${Math.round(stems.progress*100)}%`;
+    else if(queued)msg='Queued…';
+    else if(t.stems){msg='Stems are ready.';b='↻ Switch to stems';}
+    else{msg='Not split yet.';b='✂ Split stems';}
+    st.textContent=msg;btn.textContent=b;btn.style.display=b?'':'none';
+  }
   render(){
     const t=this.track;
     this.q('.deck-title .t').textContent=t?t.title:'Empty deck';
@@ -614,15 +793,24 @@ class Deck{
     const eb=this.effBpm();this.q('.bpm').textContent=eb?eb.toFixed(1)+' BPM':'— BPM';
     const k=this.q('.key');k.textContent=t&&t.key?`${t.key} · ${keyName(t.key)}`:'— key';
     k.style.cssText=t&&t.key?`color:hsl(${keyHue(t.key)} 90% 72%);border-color:hsl(${keyHue(t.key)} 60% 35%)`:'';
-    this.q('.srcl').textContent=t?srcLabel(t)+(t.energy!=null?` · energy ${t.energy}/10`:''):'';
-    this.renderPlay();
+    this.q('.srcl').textContent=t?srcLabel(t)+(this.stemMode?' · stems':'')+(t.energy!=null?` · energy ${t.energy}/10`:''):'';
+    this.renderPlay();this.renderPads();this.updateCaps();
+  }
+  renderPads(){
+    const t=this.track,hc=(t&&t.hotcues)||[];
+    $$('[data-h]',this.el).forEach((b,i)=>{b.classList.toggle('set',hc[i]!=null);b.title=hc[i]!=null?`Cue ${i+1} at ${fmt(hc[i])} — click to jump, right-click to clear`:'Click to set a hot cue here';});
+    $$('[data-l]',this.el).forEach(b=>b.classList.toggle('on',!!this.loop&&this.loop.beats===+b.dataset.l));
+    const hasB=!!this.spb();$$('.jmp',this.el).forEach(b=>b.textContent=+b.dataset.j<0?(hasB?'«4':'«8s'):(hasB?'4»':'8s»'));
   }
   renderPlay(){const p=this.isPlaying();const b=this.q('.play');b.textContent=p?'❚❚':'▶';b.classList.toggle('on',p);}
   renderProgress(){
     const d=this.duration(),t=this.time();
+    if(this.loop&&this.isPlaying()&&t>=this.loop.end){const L=this.loop.end-this.loop.start;this.seek(this.loop.start+((t-this.loop.end)%L));return;}
     this.q('.fill').style.width=d?(t/d*100)+'%':'0';
     this.q('.cuem').style.left=d?(this.cue/d*100)+'%':'0';
     this.q('.mixzone').style.width=d?Math.min(100,S.settings.mixLen/d*100)+'%':'0';
+    const lz=this.q('.loopz');if(this.loop&&d){lz.style.display='block';lz.style.left=(this.loop.start/d*100)+'%';lz.style.width=((this.loop.end-this.loop.start)/d*100)+'%';}else lz.style.display='none';
+    if(d!==this._cueDur){this._cueDur=d;const hc=(this.track&&this.track.hotcues)||[];this.q('.hcs').innerHTML=d?hc.map((x,i)=>x==null?'':`<div class="hc" style="left:${x/d*100}%" title="Cue ${i+1}"></div>`).join(''):'';}
     this.q('.el').textContent=fmt(t);const rem=d-t;const re=this.q('.rem');re.textContent='-'+fmt(rem);
     re.classList.toggle('warn',d>0&&rem<S.settings.mixLen+10&&this.isPlaying());
     if(this.type==='local')this.drawWave(d?t/d:0);
@@ -635,17 +823,168 @@ class Deck{
     for(let i=0;i<n;i++){const v=p[i]/100*c.height*0.9;g.fillStyle=i/n<frac?col:'#3a3a52';g.fillRect(i*bw,(c.height-v)/2,Math.max(1,bw-1),v||1);}
   }
 }
-function srcLabel(t){return{youtube:'YouTube',soundcloud:'SoundCloud',spotify:'Spotify → YouTube',local:'Local file',csv:'List → YouTube'}[t.source]||t.source;}
+function srcLabel(t){if(t.source==='soundcloud'&&scFullReady())return'SoundCloud · full control';return{youtube:'YouTube',soundcloud:'SoundCloud',spotify:'Spotify → YouTube',local:'Local file',csv:'List → YouTube'}[t.source]||t.source;}
+
+
+/* ================= SoundCloud full-audio mode (official API, your own app) ================= */
+let scTok=null;const scAudio=new Map(),stemMem=new Map();
+const scFullReady=()=>!!(S.settings.scClientId&&S.settings.scSecret);
+const hasAudio=t=>!!t&&(t.source==='local'||(t.source==='soundcloud'&&scFullReady()));
+async function scToken(){
+  if(scTok&&Date.now()<scTok.exp)return scTok.access;
+  let r;
+  try{r=await fetch('https://secure.soundcloud.com/oauth/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded',Authorization:'Basic '+btoa(S.settings.scClientId.trim()+':'+S.settings.scSecret.trim())},body:new URLSearchParams({grant_type:'client_credentials'})});}
+  catch(e){throw new Error('SoundCloud blocked the sign-in request from this page');}
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error_description||j.error||('sign-in failed, HTTP '+r.status)+' — check the Client ID and Secret');
+  scTok={access:j.access_token,exp:Date.now()+((j.expires_in||3600)-60)*1000};return scTok.access;
+}
+async function scGet(path){
+  const tok=await scToken();
+  const r=await fetch(path.startsWith('http')?path:'https://api.soundcloud.com'+path,{headers:{Authorization:'OAuth '+tok,accept:'application/json; charset=utf-8'}});
+  if(r.status===401)scTok=null;
+  if(!r.ok)throw new Error('SoundCloud API error '+r.status);
+  return r.json();
+}
+function scApiToTrack(j,tag){
+  if(!j||j.kind!=='track')return null;
+  return{id:'sc:'+(j.permalink_url||('id'+j.id)).split('?')[0],source:'soundcloud',sc:j.permalink_url,scId:j.id,scUrn:j.urn,title:j.title,
+    artist:(j.publisher_metadata&&j.publisher_metadata.artist)||(j.user&&j.user.username)||'',dur:j.duration?j.duration/1000:undefined,
+    bpm:j.bpm||undefined,tags:[j.genre&&j.genre.toLowerCase(),tag].filter(Boolean),scAccess:j.access};
+}
+async function scResolveList(url){
+  const j=await scGet('/resolve?url='+encodeURIComponent(url));
+  if(j.kind==='track')return[scApiToTrack(j)];
+  if(j.kind==='playlist'){
+    const tag=(j.title||'').toLowerCase(),out=[];let next=`/playlists/${encodeURIComponent(j.urn||j.id)}/tracks?limit=200&linked_partitioning=true`;
+    while(next&&out.length<2000){const p=await scGet(next);(p.collection||p||[]).forEach(t=>{const x=scApiToTrack(t,tag);if(x)out.push(x);});next=p.next_href;}
+    return out;
+  }
+  throw new Error('that link isn’t a SoundCloud track or set');
+}
+async function scSearch(q){const p=await scGet('/tracks?'+new URLSearchParams({q,limit:20,access:'playable',linked_partitioning:'true'}));return(p.collection||p||[]).map(t=>scApiToTrack(t)).filter(Boolean);}
+async function scFetchHls(url,tok){
+  let r=await fetch(url,{headers:{Authorization:'OAuth '+tok}});if(!r.ok)throw new Error('stream playlist '+r.status);
+  let txt=await r.text(),base=r.url;
+  if(/#EXT-X-STREAM-INF/.test(txt)){const v=txt.split('\n').map(l=>l.trim()).find(l=>l&&!l.startsWith('#'));r=await fetch(new URL(v,base).href);txt=await r.text();base=r.url;}
+  if(/#EXT-X-KEY:METHOD=(?!NONE)/.test(txt))throw new Error('this track’s stream is encrypted');
+  const parts=[];const map=txt.match(/#EXT-X-MAP:URI="([^"]+)"/);if(map)parts.push(new URL(map[1],base).href);
+  txt.split('\n').forEach(l=>{l=l.trim();if(l&&!l.startsWith('#'))parts.push(new URL(l,base).href);});
+  const last=parts[parts.length-1]||'';
+  if(/\.ts(\?|$)/.test(last))throw new Error('this stream format can’t be decoded in a browser');
+  const bufs=[];for(let i=0;i<parts.length;i+=6){bufs.push(...await Promise.all(parts.slice(i,i+6).map(u=>fetch(u).then(x=>{if(!x.ok)throw new Error('segment '+x.status);return x.arrayBuffer();}))));}
+  return new Blob(bufs,{type:map||/\.(m4s|mp4|m4a)(\?|$)/.test(last)?'audio/mp4':/\.mp3(\?|$)/.test(last)?'audio/mpeg':'audio/aac'});
+}
+async function scFetchAudio(t){
+  if(scAudio.has(t.id))return scAudio.get(t.id);
+  if(!t.scUrn&&!t.scId){const j=await scGet('/resolve?url='+encodeURIComponent(t.sc));Object.assign(t,{scId:j.id,scUrn:j.urn,scAccess:j.access});save();}
+  if(t.scAccess==='blocked')throw new Error('the uploader blocks playback outside SoundCloud');
+  const st=await scGet(`/tracks/${encodeURIComponent(t.scUrn||t.scId)}/streams`);const tok=await scToken();
+  let blob;
+  if(st.http_mp3_128_url){const r=await fetch(st.http_mp3_128_url,{headers:{Authorization:'OAuth '+tok}});if(!r.ok)throw new Error('stream '+r.status);blob=await r.blob();}
+  else{const h=st.hls_aac_160_url||st.hls_aac_96_url||st.hls_mp3_128_url;if(!h)throw new Error(t.scAccess==='preview'?'SoundCloud only allows a preview of this track':'no stream available');blob=await scFetchHls(h,tok);}
+  if(scAudio.size>12)scAudio.delete(scAudio.keys().next().value);
+  scAudio.set(t.id,blob);return blob;
+}
+async function getAudioBlob(t){
+  if(t.source==='local'){const f=localFiles.get(t.id)||await idb.get(t.id);if(f)localFiles.set(t.id,f);return f||null;}
+  if(t.source==='soundcloud'&&scFullReady())return scFetchAudio(t);
+  return null;
+}
+// SoundCloud audio and its stems stay in memory for this session only (never saved to disk).
+async function getStemBlob(t){return t.source==='local'?idb.get('stems:'+t.id):(stemMem.get(t.id)||null);}
+async function putStemBlob(t,b){if(t.source==='local')await idb.put('stems:'+t.id,b);else stemMem.set(t.id,b);}
+async function analyzeInBackground(t,blob){
+  if(t.analyzed||t._analyzing)return;t._analyzing=true;
+  try{const r=await analyzeFile(blob);Object.assign(t,{bpm:t.bpm||r.bpm,key:r.key,energy:r.energy,peaks:r.peaks,analyzed:true});save();
+    for(const d of Object.values(decks))if(d.track===t){d.render();d.drawWave();}renderLibrary();refresh();}
+  catch(e){console.warn('analysis failed',e);}finally{delete t._analyzing;}
+}
+
+/* ================= Stems (AI separation via Demucs, in a background worker) ================= */
+const MODEL_URL='https://huggingface.co/timcsy/demucs-web-onnx/resolve/main/htdemucs_embedded.onnx';
+const stems={queue:[],cur:null,progress:0,stage:'',worker:null,reqs:new Map(),nextId:1,confirmed:false,backend:null};
+function stemWorker(){
+  if(stems.worker)return stems.worker;
+  const w=new Worker('stems-worker.js',{type:'module'});
+  w.onmessage=e=>{const m=e.data,r=stems.reqs.get(m.id);if(m.backend)stems.backend=m.backend;if(!r)return;
+    if(m.type==='progress')r.onProgress(m);else if(m.type==='done'){stems.reqs.delete(m.id);r.res(m.stems);}else if(m.type==='error'){stems.reqs.delete(m.id);r.rej(new Error(m.message));}};
+  w.onerror=e=>{for(const r of stems.reqs.values())r.rej(new Error(e.message||'The stem splitter couldn’t start (are you online?)'));stems.reqs.clear();stems.worker=null;};
+  return stems.worker=w;
+}
+function separate(L,R,onProgress){
+  if(window.__stemOverride)return window.__stemOverride(L,R,onProgress);
+  return new Promise((res,rej)=>{const id=stems.nextId++;stems.reqs.set(id,{res,rej,onProgress});
+    stemWorker().postMessage({type:'split',id,left:L,right:R,modelUrl:MODEL_URL},[L.buffer,R.buffer]);});
+}
+async function decode44k(file){
+  const buf=await ac().decodeAudioData(await file.arrayBuffer());
+  if(buf.duration>15*60)throw new Error('tracks over 15 minutes are too long to split in a browser');
+  const off=new OfflineAudioContext(2,Math.ceil(buf.duration*44100),44100);const s=off.createBufferSource();s.buffer=buf;s.connect(off.destination);s.start();
+  const r=await off.startRendering();return{L:r.getChannelData(0).slice(),R:r.getChannelData(1).slice()};
+}
+// 8-channel 16-bit WAV: drums L/R, bass L/R, melody L/R, vocals L/R — one file keeps the stems sample-locked and keeps key lock working.
+function encodeWav8(tracks,sr){
+  const ch=[];for(const t of tracks){ch.push(t.left,t.right);}
+  const n=ch[0].length,C=ch.length,bytes=n*C*2,buf=new ArrayBuffer(68+bytes),v=new DataView(buf);let o=0;
+  const str=s=>{for(let i=0;i<s.length;i++)v.setUint8(o++,s.charCodeAt(i));},u32=x=>{v.setUint32(o,x,true);o+=4;},u16=x=>{v.setUint16(o,x,true);o+=2;};
+  str('RIFF');u32(60+bytes);str('WAVE');str('fmt ');u32(40);u16(0xFFFE);u16(C);u32(sr);u32(sr*C*2);u16(C*2);u16(16);
+  u16(22);u16(16);u32(0);// cbSize, valid bits, channel mask 0 = discrete channels
+  // KSDATAFORMAT_SUBTYPE_PCM GUID 00000001-0000-0010-8000-00aa00389b71
+  for(const b of[1,0,0,0,0,0,0x10,0,0x80,0,0,0xaa,0,0x38,0x9b,0x71])v.setUint8(o++,b);
+  str('data');u32(bytes);
+  const out=new Int16Array(buf,68);
+  for(let i=0,k=0;i<n;i++)for(let c=0;c<C;c++){const x=ch[c][i];out[k++]=x>=1?32767:x<=-1?-32768:Math.round(x*32767);}
+  return new Blob([buf],{type:'audio/wav'});
+}
+function requestStems(t,{auto=false}={}){
+  if(!t)return;
+  if(!hasAudio(t))return toast(t.source==='soundcloud'?'Turn on SoundCloud full control (Add music → SoundCloud) to split SoundCloud tracks.':'Stems need the audio. YouTube and Spotify don’t let web apps access it, so drop the song’s file in to split it.',6000);
+  if(t.stems||stems.cur===t||stems.queue.includes(t))return;
+  if(!auto&&!lsGet('cf_model_ok',false)&&!stems.confirmed){confirmModelDownload(()=>{stems.confirmed=true;requestStems(t);});return;}
+  stems.queue.push(t);updateStemUI();runStems();
+}
+function confirmModelDownload(go){
+  const gpu='gpu' in navigator;
+  openModal(`<div class="mhead"><h2>Split into stems</h2><button class="x">✕</button></div>
+    <div class="note">Crossfade uses <b>Demucs</b>, Meta’s open-source AI model, to split songs into <b>drums, bass, melody and vocals</b>. It runs right here in your browser, so your music is never uploaded.</div>
+    <div class="note">The first time, it downloads the model (<b>about 172 MB</b>, once; after that it’s cached).
+    ${gpu?'Your browser can use your graphics chip, so a song usually takes <b>under a minute or two</b>.':'Your browser can’t use the graphics chip, so splitting runs on the processor and can take <b>several minutes per song</b>. Chrome or Edge on a recent computer is much faster.'}
+    You can keep mixing while it works, and each song only needs splitting once.</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="x">Not now</button><button class="primary" id="mgo">Download & split</button></div>`);
+  $('#mgo').onclick=()=>{closeModal();go();};
+}
+async function runStems(){
+  if(stems.cur)return;
+  while(stems.queue.length){
+    const t=stems.queue.shift();stems.cur=t;stems.progress=0;stems.stage='Reading audio';updateStemUI();
+    try{
+      const f=await getAudioBlob(t);if(!f)throw new Error('the audio file is missing — drag it back in');
+      const{L,R}=await decode44k(f);
+      const out=await separate(L,R,m=>{stems.stage=m.stage==='download'?'Downloading AI model (one time)':m.stage==='init'?'Starting AI model':'Splitting'+(stems.backend==='cpu'?' (CPU, slower)':'');stems.progress=m.p||0;updateStemUI();});
+      stems.stage='Saving';stems.progress=1;updateStemUI();await sleep(30);
+      await putStemBlob(t,encodeWav8([out.drums,out.bass,out.other,out.vocals],44100));
+      t.stems=true;save();lsSet('cf_model_ok',true);
+      toast(`Stems ready for <b>${esc(t.title)}</b>`);
+      for(const d of Object.values(decks))if(d.track===t)d.useStems(false);
+    }catch(e){console.error(e);toast('Couldn’t split “'+esc(t.title)+'”: '+esc(e.message),8000);}
+    stems.cur=null;updateStemUI();renderLibrary();
+  }
+}
+let stemUiQ=false;
+function updateStemUI(){if(stemUiQ)return;stemUiQ=true;requestAnimationFrame(()=>{stemUiQ=false;for(const d of Object.values(decks))d.updateCaps();
+  const pill=$('#stemPill');if(pill){const c=stems.cur;pill.style.display=c?'':'none';if(c)pill.textContent=`✂ ${c.title}: ${stems.stage} ${Math.round(stems.progress*100)}%${stems.queue.length?` (+${stems.queue.length} queued)`:''}`;}});}
+async function clearStemCache(){stemMem.clear();for(const t of S.tracks)if(t.stems){await idb.del('stems:'+t.id);t.stems=false;}save();renderLibrary();for(const d of Object.values(decks)){if(d.stemMode&&d.track)await d.load(d.track);}}
 
 /* ================= mixer / transport ================= */
 const decks={A:new Deck('A'),B:new Deck('B')};
 const other=d=>d.id==='A'?decks.B:decks.A;
 let xf=0,mixing=null,lastMasterId=null,lastTransition=null;
-function setXfade(x){xf=clamp(x,0,1);$('#xfader').value=Math.round(xf*1000);decks.A.xf=Math.cos(xf*Math.PI/2);decks.B.xf=Math.sin(xf*Math.PI/2);decks.A.applyVol();decks.B.applyVol();}
+function setXfade(x){xf=clamp(x,0,1);$('#xfader').value=Math.round(xf*1000);decks.A.xf=xf<=0.5?1:Math.cos((xf-0.5)*Math.PI);decks.B.xf=xf>=0.5?1:Math.sin(xf*Math.PI);decks.A.applyVol();decks.B.applyVol();}
 function master(){
   const A=decks.A,B=decks.B,pa=A.isPlaying(),pb=B.isPlaying();
   if(pa&&!pb)return A;if(pb&&!pa)return B;
-  if(pa&&pb)return A.xf>=B.xf?A:B;
+  if(pa&&pb)return A.xf>B.xf?A:B.xf>A.xf?B:(A.loadedAt<=B.loadedAt?A:B);
   if(A.track&&B.track)return A.xf>=B.xf?A:B;return A.track?A:B.track?B:null;
 }
 function idleDeck(){const m=master();if(m&&m.track)return other(m);return!decks.A.track?decks.A:!decks.B.track?decks.B:(decks.A.xf>=decks.B.xf?decks.B:decks.A);}
@@ -653,11 +992,24 @@ function startMix(to){
   if(!to.track)return toast(`Load something on deck ${to.id} first.`);
   const from=other(to);
   if(!from.isPlaying()){to.play();setXfade(to.id==='A'?0:1);return;}
-  if(!to.isPlaying())to.play();
-  mixing={from,to,t0:performance.now(),dur:S.settings.mixLen*1000,x0:xf,x1:to.id==='A'?0:1};
+  const was=to.isPlaying();// if the incoming deck isn't playing yet, it starts silent and fades in
+  const x0=was?(from.id==='A'?Math.min(xf,0.5):Math.max(xf,0.5)):(from.id==='A'?0:1);
+  if(!was){setXfade(x0);to.play();}
+  mixing={from,to,t0:performance.now(),dur:S.settings.mixLen*1000,x0,x1:to.id==='A'?0:1,
+    swap:S.settings.bassSwap&&(from.type==='local'||to.type==='local'),fromLow:from.k.low.get(),toLow:to.k.low.get()};
+}
+function swapStep(p){
+  const m=mixing;if(!m||!m.swap)return;
+  if(!m.s1){m.s1=true;if(m.to.type==='local')m.to.k.low.set(-1);}
+  if(p>=0.5&&!m.s2){m.s2=true;if(m.from.type==='local')m.from.k.low.set(-1);if(m.to.type==='local')m.to.k.low.set(m.toLow);}
+}
+function cancelMix(){
+  if(!mixing)return;const m=mixing;mixing=null;$('#mixProg').style.width='0';
+  if(m.swap){if(m.to.type==='local')m.to.k.low.set(m.toLow);if(m.from.type==='local')m.from.k.low.set(m.fromLow);}
 }
 function finishMix(){
-  const{from,to}=mixing;mixing=null;$('#mixProg').style.width='0';from.pause();
+  const m=mixing,{from,to}=m;mixing=null;$('#mixProg').style.width='0';from.pause();
+  if(m.swap){if(to.type==='local')to.k.low.set(m.toLow);if(from.type==='local')from.k.low.set(m.fromLow);}
   if(from.track&&to.track){learn(from.track,to.track,0.5);lastTransition={from:from.track.id,to:to.track.id};renderFeedback();}
 }
 function learn(a,b,amt){
@@ -688,7 +1040,7 @@ async function loadTo(deck,track,opts={}){
 let lastSlow=0;
 function tick(now){
   if(mixing){const p=clamp((now-mixing.t0)/mixing.dur,0,1);const e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
-    setXfade(mixing.x0+(mixing.x1-mixing.x0)*e);$('#mixProg').style.width=(p*100)+'%';if(p>=1)finishMix();}
+    setXfade(mixing.x0+(mixing.x1-mixing.x0)*e);swapStep(p);$('#mixProg').style.width=(p*100)+'%';if(p>=1)finishMix();}
   decks.A.renderProgress();decks.B.renderProgress();
   if(now-lastSlow>400){lastSlow=now;slowTick();}
   requestAnimationFrame(tick);
@@ -787,17 +1139,17 @@ function renderLibrary(){
     const s=scores.get(t.id);const kh=keyHue(t.key);
     return`<tr data-id="${esc(t.id)}" class="${onDeck.has(t.id)?'ondeck':''}"><td class="ld"><button class="la">A</button> <button class="lb">B</button></td>
     <td><div class="tt">${esc(t.title)}</div><div class="ta">${esc(t.artist||'')}${t.tags&&t.tags.length?' · <span style="color:var(--faint)">'+esc(t.tags.slice(0,3).join(', '))+'</span>':''}</div></td>
-    <td><span class="src ${t.source}">${t.source==='csv'?'list':t.source}</span></td>
+    <td style="white-space:nowrap"><span class="src ${t.source}">${t.source==='csv'?'list':t.source}</span>${t.stems?'<span class="stemchip" title="Stems ready">STEMS</span>':''}</td>
     <td class="mono">${t.bpm?t.bpm.toFixed(t.bpm%1?1:0):'<span style="color:var(--faint)">—</span>'}</td>
     <td>${t.key?`<span class="keychip" style="background:hsl(${kh} 60% 50% / .16);color:hsl(${kh} 90% 72%)">${t.key}</span>`:'<span style="color:var(--faint)">—</span>'}</td>
     <td>${t.energy!=null?`<span class="ebar"><div style="width:${t.energy*10}%"></div></span>`:'<span style="color:var(--faint)">—</span>'}</td>
     <td class="match" style="color:${s==null?'var(--faint)':s>=75?'var(--good)':s>=50?'var(--ok)':'var(--dim)'}">${s==null?'—':s}</td>
-    <td style="white-space:nowrap"><button class="iconbtn ed" title="Edit">✎</button><button class="iconbtn del" title="Remove">✕</button></td></tr>`;}).join('')}</tbody></table></div>
+    <td style="white-space:nowrap">${hasAudio(t)&&!t.stems?`<button class="iconbtn sp" title="Split into stems">✂</button>`:''}<button class="iconbtn ed" title="Edit">✎</button><button class="iconbtn del" title="Remove">✕</button></td></tr>`;}).join('')}</tbody></table></div>
     ${rows.length>shown.length?`<div class="small" style="margin-top:6px">Showing ${shown.length} of ${rows.length}. Search to narrow down.</div>`:''}`;
   $$('tbody tr',body).forEach(tr=>{const t=byId(tr.dataset.id);
     $('.la',tr).onclick=()=>{ac();loadTo(decks.A,t);};$('.lb',tr).onclick=()=>{ac();loadTo(decks.B,t);};
-    $('.ed',tr).onclick=()=>openEdit(t);
-    $('.del',tr).onclick=()=>{S.tracks=S.tracks.filter(x=>x!==t);if(t.source==='local')idb.del(t.id);save();renderLibrary();refresh();};
+    $('.ed',tr).onclick=()=>openEdit(t);const spb=$('.sp',tr);if(spb)spb.onclick=()=>requestStems(t);
+    $('.del',tr).onclick=()=>{S.tracks=S.tracks.filter(x=>x!==t);if(t.source==='local'){idb.del(t.id);idb.del('stems:'+t.id);}stemMem.delete(t.id);scAudio.delete(t.id);save();renderLibrary();refresh();};
     tr.ondblclick=e=>{if(e.target.closest('button'))return;ac();loadTo(idleDeck(),t);};});
 }
 ['#q','#srcFilter','#sortBy'].forEach(s=>$(s).addEventListener('input',renderLibrary));
@@ -850,18 +1202,69 @@ async function ytPlaylist(id){
 async function scMeta(url){try{const r=await fetch('https://soundcloud.com/oembed?format=json&url='+encodeURIComponent(url));const j=await r.json();
   const m=(j.title||'').match(/^(.*) by (.*)$/);return m?{title:m[1],artist:m[2]}:{title:j.title,artist:j.author_name};}catch(e){return null;}}
 
+/* ---- playlist expansion without API keys ---- */
+function ytPlaylistViaPlayer(list){
+  return ytApi().then(()=>new Promise((res,rej)=>{
+    const host=document.createElement('div');host.style.cssText='position:fixed;left:-9999px;top:0;width:320px;height:180px';
+    const inner=document.createElement('div');host.appendChild(inner);document.body.appendChild(host);
+    const done=(v,err)=>{clearInterval(iv);clearTimeout(to);try{p.destroy();}catch(e){}host.remove();err?rej(err):res(v);};
+    let iv=null,to=null;
+    const p=new YT.Player(inner,{width:320,height:180,playerVars:{listType:'playlist',list,autoplay:0,mute:1,origin:location.origin},
+      events:{onReady:()=>{try{p.cuePlaylist({listType:'playlist',list});}catch(e){}iv=setInterval(()=>{const ids=p.getPlaylist&&p.getPlaylist();if(ids&&ids.length)done(ids);},300);},
+              onError:()=>done(null,new Error('YouTube couldn’t open that playlist (private or unavailable?)'))}});
+    to=setTimeout(()=>done(null,new Error('Timed out reading the YouTube playlist')),15000);
+  }));
+}
+function scPlaylistViaWidget(url){
+  return scApi().then(()=>new Promise((res,rej)=>{
+    const f=document.createElement('iframe');f.style.cssText='position:fixed;left:-9999px;top:0;width:300px;height:300px';
+    f.src='https://w.soundcloud.com/player/?url='+encodeURIComponent(url)+'&auto_play=false';document.body.appendChild(f);
+    const w=SC.Widget(f);const to=setTimeout(()=>{f.remove();rej(new Error('Timed out reading the SoundCloud set'));},15000);
+    w.bind(SC.Widget.Events.READY,()=>w.getSounds(list=>{clearTimeout(to);f.remove();res(list||[]);}));
+  }));
+}
+const parseSpotify=u=>{const m=(u||'').match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|track)\/([A-Za-z0-9]{22})/)||(u||'').match(/^spotify:(playlist|album|track):([A-Za-z0-9]{22})$/);return m?{kind:m[1],id:m[2]}:null;};
+const isSCSet=u=>/soundcloud\.com\/[^/]+\/sets\//.test(u)||/soundcloud\.com\/[^/]+\/(likes|tracks)\/?$/.test(u);
+
 async function addLinks(text,statusEl){
-  const lines=text.split(/\n+/).map(s=>s.trim()).filter(Boolean);const yt=[],sc=[],lists=[];let bad=0;
+  const lines=text.split(/\n+/).map(s=>s.trim()).filter(Boolean);const yt=[],sc=[],ytLists=[],scSets=[],spot=[];let bad=0;
   for(const line of lines){const[url,...rest]=line.split('|').map(s=>s.trim());const extra={};
     for(const r of rest){const k=parseKey(r);if(k)extra.key=k;else if(/^\d{2,3}(\.\d)?$/.test(r))extra.bpm=+r;else if(/^e?\d{1,2}$/i.test(r))extra.energy=clamp(+r.replace(/e/i,''),1,10);}
-    const y=parseYouTube(url);
-    if(y&&y.v)yt.push({v:y.v,extra});else if(y&&y.list)lists.push(y.list);else if(isSC(url))sc.push({url,extra});else bad++;}
-  statusEl.textContent='Fetching titles…';
-  for(const l of lists){try{const items=await ytPlaylist(l);items.forEach(i=>yt.push({v:i.v,extra:{},meta:i}));}catch(e){toast('Playlist import needs a YouTube API key (Settings). '+esc(e.message),6000);}}
-  const meta=await ytMeta(yt.filter(x=>!x.meta).map(x=>x.v));
-  const tracks=yt.map(({v,extra,meta:m})=>{const mm=m||meta[v];return{id:'yt:'+v,source:'youtube',yt:v,title:mm?mm.title:'YouTube '+v,artist:mm?mm.artist:'',dur:mm&&mm.dur,_needsMeta:!mm||undefined,...extra};});
-  for(const{url,extra}of sc){const m=await scMeta(url);tracks.push({id:'sc:'+url.split('?')[0],source:'soundcloud',sc:url,title:m?m.title:url.split('/').pop(),artist:m?m.artist:'',_needsMeta:!m||undefined,...extra});}
-  const n=addTracks(tracks);statusEl.textContent=`Added ${n} track${n===1?'':'s'}${bad?` · ${bad} line${bad>1?'s':''} not recognised`:''}.`;
+    const y=parseYouTube(url),s=parseSpotify(url);
+    if(s)spot.push(s);
+    else if(y&&y.list&&(!y.v||/playlist/.test(url)))ytLists.push(y.list);
+    else if(y&&y.v)yt.push({v:y.v,extra});
+    else if(isSC(url))(isSCSet(url)?scSets:sc).push({url,extra});
+    else bad++;}
+  const tracks=[];const say=t=>{statusEl.textContent=t;};
+  for(const l of ytLists){say('Reading YouTube playlist…');
+    try{let items;
+      if(S.settings.ytKey)items=await ytPlaylist(l);
+      else{const ids=await ytPlaylistViaPlayer(l);items=ids.map(v=>({v}));}
+      items.forEach(i=>yt.push({v:i.v,extra:{},meta:i.title?i:null}));}
+    catch(e){toast(esc(e.message),6000);}}
+  if(yt.length){say(`Fetching titles for ${yt.length} video${yt.length>1?'s':''}…`);
+    const meta=await ytMeta(yt.filter(x=>!x.meta).map(x=>x.v));
+    yt.forEach(({v,extra,meta:m})=>{const mm=m||meta[v];tracks.push({id:'yt:'+v,source:'youtube',yt:v,title:mm?mm.title:'YouTube '+v,artist:mm?mm.artist:'',dur:mm&&mm.dur,_needsMeta:!mm||undefined,...extra});});}
+  for(const{url}of scSets){say('Reading SoundCloud set…');
+    try{
+      if(scFullReady()){(await scResolveList(url)).forEach(t=>tracks.push(t));}
+      else{const list=await scPlaylistViaWidget(url);const setName=(url.split('/sets/')[1]||'').split(/[/?]/)[0].replace(/-/g,' ');
+        for(const s of list){if(!s||!s.id)continue;const purl=s.permalink_url||('https://api.soundcloud.com/tracks/'+s.id);
+          tracks.push({id:'sc:'+(s.permalink_url||('id'+s.id)).split('?')[0],source:'soundcloud',sc:purl,scId:s.id,title:s.title||'SoundCloud track',artist:(s.publisher_metadata&&s.publisher_metadata.artist)||(s.user&&s.user.username)||'',
+            dur:s.duration?s.duration/1000:undefined,tags:[s.genre&&s.genre.toLowerCase(),setName].filter(Boolean),_needsMeta:!s.title||undefined});}}
+    }catch(e){toast('SoundCloud: '+esc(e.message),6000);}}
+  for(const{url,extra}of sc){say('Fetching SoundCloud info…');
+    if(scFullReady()){try{const t=(await scResolveList(url))[0];if(t){tracks.push({...t,...extra});continue;}}catch(e){}}
+    const m=await scMeta(url);tracks.push({id:'sc:'+url.split('?')[0],source:'soundcloud',sc:url,title:m?m.title:url.split('/').pop(),artist:m?m.artist:'',_needsMeta:!m||undefined,...extra});}
+  for(const s of spot){
+    if(!spTok){toast('To import Spotify links, connect Spotify first (Add music → Spotify).',6000);break;}
+    try{
+      if(s.kind==='playlist'){const pl=await sp(`/playlists/${s.id}?fields=name`);await spImport('pl',s.id,(pl.name||'playlist').toLowerCase(),statusEl);}
+      else if(s.kind==='album'){say('Reading album…');const al=await sp(`/albums/${s.id}`);const ts=al.tracks.items.map(x=>spToTrack(x,(al.name||'').toLowerCase())).filter(Boolean);await spEnrich(ts,statusEl);ts.forEach(t=>tracks.push(t));}
+      else{const tr=await sp(`/tracks/${s.id}`);const t=spToTrack(tr);if(t){await spEnrich([t],statusEl);tracks.push(t);}}
+    }catch(e){toast('Spotify: '+esc(e.message),6000);}}
+  const n=addTracks(tracks);say(`Added ${n} new track${n===1?'':'s'}${bad?` · ${bad} line${bad>1?'s':''} not recognised`:''}.`);
   return n;
 }
 
@@ -994,16 +1397,17 @@ $('#overlay').addEventListener('mousedown',e=>{if(e.target.id==='overlay')closeM
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 function openAdd(tab='links'){
-  const T={links:'Links',search:'Search YouTube',files:'Files',spotify:'Spotify',csv:'CSV'};
+  const T={links:'Links',search:'Search YouTube',files:'Files',soundcloud:'SoundCloud',spotify:'Spotify',csv:'CSV'};
   openModal(`<div class="mhead"><h2>Add music</h2><button class="x">✕</button></div>
     <div class="tabs">${Object.entries(T).map(([k,v])=>`<button data-tab="${k}" class="${k===tab?'on':''}">${v}</button>`).join('')}</div><div id="tabBody"></div>`);
   $$('.tabs button').forEach(b=>b.onclick=()=>openAdd(b.dataset.tab));
   const B=$('#tabBody');
   if(tab==='links'){
     B.innerHTML=`<div class="field"><label>YouTube or SoundCloud links, one per line</label><textarea id="links" rows="7" placeholder="https://www.youtube.com/watch?v=...
-https://soundcloud.com/artist/track
+https://soundcloud.com/artist/sets/my-set
+https://open.spotify.com/playlist/...
 https://youtu.be/xxxx | 124 | 8A        ← optional BPM / key"></textarea></div>
-      <div class="note">YouTube <b>playlist</b> links work too if you add a YouTube API key in Settings. You can add BPM and key after a <code>|</code>, or tap them later.</div>
+      <div class="note">Playlist links work too: YouTube playlists, SoundCloud sets, and Spotify playlists/albums (once Spotify is connected). You can add BPM and key after a <code>|</code>, or tap them later.</div>
       <div style="display:flex;gap:10px;align-items:center"><button class="primary" id="addLinks">Add to library</button><span class="small" id="lstat"></span></div>`;
     $('#addLinks').onclick=async()=>{const b=$('#addLinks');b.disabled=true;await addLinks($('#links').value,$('#lstat'));b.disabled=false;$('#links').value='';};
   }else if(tab==='search'){
@@ -1023,6 +1427,28 @@ https://youtu.be/xxxx | 124 | 8A        ← optional BPM / key"></textarea></div
     const d=$('#drop');$('#fin').onchange=e=>addFiles(e.target.files,$('#fstat'),$('#fprog'));
     d.ondragover=e=>{e.preventDefault();d.classList.add('over');};d.ondragleave=()=>d.classList.remove('over');
     d.ondrop=e=>{e.preventDefault();e.stopPropagation();d.classList.remove('over');addFiles(e.dataTransfer.files,$('#fstat'),$('#fprog'));};
+  }else if(tab==='soundcloud'){
+    if(!scFullReady()){
+      B.innerHTML=`<div class="note">SoundCloud links already play here through SoundCloud’s player (paste them in <b>Links</b>), but that player is sealed, so it only gets volume and the crossfader.
+        <b>Full control</b> streams the actual audio instead, so SoundCloud tracks get EQ, filter, FX, stems and automatic BPM/key. It needs your own free SoundCloud developer app:
+        <ol><li>Logged in to SoundCloud, open <a href="https://soundcloud.com/you/apps" target="_blank">soundcloud.com/you/apps</a> → <b>Register a new application</b>.</li>
+        <li>Copy its <b>Client ID</b> and <b>Client Secret</b> into the boxes below.</li></ol>
+        Both stay only in this browser. Don’t enter them on a shared computer. SoundCloud audio is kept in memory while you play and is never saved.</div>
+        <div class="frow"><input type="text" id="scid" placeholder="Client ID" value="${esc(S.settings.scClientId)}"><input type="password" id="scsec" placeholder="Client Secret" value="${esc(S.settings.scSecret)}"></div>
+        <div style="display:flex;gap:10px;align-items:center"><button class="primary" id="scgo">Connect</button><span class="small" id="scst"></span></div>`;
+      $('#scgo').onclick=async()=>{S.settings.scClientId=$('#scid').value.trim();S.settings.scSecret=$('#scsec').value.trim();scTok=null;$('#scst').textContent='Checking…';
+        try{await scToken();save();toast('SoundCloud full control is on ✓');openAdd('soundcloud');for(const d of Object.values(decks))d.render();renderLibrary();}
+        catch(e){S.settings.scClientId='';S.settings.scSecret='';$('#scst').textContent='Couldn’t connect: '+e.message;}};
+      return;}
+    B.innerHTML=`<div style="display:flex;gap:8px"><input type="text" id="scq" placeholder="Search SoundCloud…" style="flex:1"><button class="primary" id="scsgo">Search</button></div>
+      <div class="list" id="scr"></div>
+      <div class="note">Full control is on: SoundCloud tracks stream into the decks with EQ, FX and stems. Paste set/playlist links in the <b>Links</b> tab. <a href="#" id="scoff">Turn off</a></div>`;
+    const go=async()=>{const q=$('#scq').value.trim();if(!q)return;$('#scr').innerHTML='<div class="small">Searching…</div>';
+      try{const r=await scSearch(q);$('#scr').innerHTML=r.map((t,i)=>`<div class="li"><div class="grow"><div class="tt">${esc(t.title)}</div><div class="ta">${esc(t.artist)}${t.dur?' · '+fmt(t.dur):''}${t.bpm?' · '+t.bpm+' BPM':''}</div></div><button data-i="${i}">${byId(t.id)?'✓ Added':'+ Add'}</button></div>`).join('')||'<div class="small">Nothing found.</div>';
+        $$('#scr button').forEach(b=>b.onclick=()=>{addTracks([r[+b.dataset.i]]);b.textContent='✓ Added';});}
+      catch(e){$('#scr').innerHTML=`<div class="small" style="color:var(--bad)">${esc(e.message)}</div>`;}};
+    $('#scsgo').onclick=go;$('#scq').onkeydown=e=>{if(e.key==='Enter')go();};
+    $('#scoff').onclick=e=>{e.preventDefault();S.settings.scClientId='';S.settings.scSecret='';scTok=null;save();openAdd('soundcloud');for(const d of Object.values(decks))d.render();renderLibrary();};
   }else if(tab==='spotify'){
     const connected=!!spTok;
     B.innerHTML=`${connected?'':`<div class="note">Spotify only lets apps read your library through your own (free) developer app. One-time setup:<ol>
@@ -1090,10 +1516,12 @@ function openSettings(){
   openModal(`<div class="mhead"><h2>Settings</h2><button class="x">✕</button></div>
     <div class="field"><label>YouTube Data API key (optional — enables search, playlists, auto-matching Spotify songs)</label><input type="password" id="sy" value="${esc(S.settings.ytKey)}" placeholder="AIza…"></div>
     <div class="field"><label>Spotify Client ID (see Add music → Spotify)</label><input type="text" id="ss" value="${esc(S.settings.spClientId)}"></div>
+    <label class="chk"><input type="checkbox" id="sauto" ${S.settings.autoStems?'checked':''}> Automatically split audio files into stems when loaded on a deck (after the first split)</label>
     <div class="note">Redirect URI to register with Spotify: <code>${esc(redirectUri())}</code></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="ssave">Save</button><button id="sexp">Copy library backup</button><button id="simp">Restore backup</button><button id="sforget">Reset learned preferences</button><button id="sclear" style="color:var(--bad)">Clear library</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" id="ssave">Save</button><button id="sexp">Copy library backup</button><button id="simp">Restore backup</button><button id="sforget">Reset learned preferences</button><button id="sstems">Clear saved stems</button><button id="sclear" style="color:var(--bad)">Clear library</button></div>
     <textarea id="sbox" rows="4" placeholder="Backup JSON appears here / paste one to restore" style="display:none"></textarea><div class="small" id="sst"></div>`);
-  $('#ssave').onclick=()=>{S.settings.ytKey=$('#sy').value.trim();S.settings.spClientId=$('#ss').value.trim();save();closeModal();toast('Saved');};
+  $('#sstems').onclick=async()=>{await clearStemCache();$('#sst').textContent='Saved stems cleared (the AI model stays cached).';};
+  $('#ssave').onclick=()=>{S.settings.ytKey=$('#sy').value.trim();S.settings.spClientId=$('#ss').value.trim();S.settings.autoStems=$('#sauto').checked;save();closeModal();toast('Saved');};
   $('#sexp').onclick=async()=>{const j=JSON.stringify({tracks:S.tracks.map(({peaks,...t})=>t),learned:S.learned});const b=$('#sbox');b.style.display='';b.value=j;try{await navigator.clipboard.writeText(j);$('#sst').textContent='Copied to clipboard.';}catch(e){b.select();$('#sst').textContent='Select-all and copy the text above.';}};
   $('#simp').onclick=()=>{const b=$('#sbox');if(b.style.display==='none'){b.style.display='';$('#sst').textContent='Paste a backup above, then click Restore again.';return;}
     try{const j=JSON.parse(b.value);addTracks(j.tracks||[]);if(j.learned)S.learned=j.learned;save();$('#sst').textContent='Restored.';}catch(e){$('#sst').textContent='That isn’t a valid backup.';}};
@@ -1103,7 +1531,8 @@ function openSettings(){
 $('#btnSettings').onclick=openSettings;
 
 /* ================= controls wiring ================= */
-$('#xfader').oninput=e=>{mixing=null;$('#mixProg').style.width='0';setXfade(+e.target.value/1000);};
+$('#xfader').oninput=e=>{cancelMix();setXfade(+e.target.value/1000);};$('#xfader').ondblclick=()=>{cancelMix();setXfade(0.5);};
+const bsw=$('#bassSwap');bsw.checked=S.settings.bassSwap;bsw.onchange=()=>{S.settings.bassSwap=bsw.checked;save();};
 $('#mixToA').onclick=()=>{ac();startMix(decks.A);};$('#mixToB').onclick=()=>{ac();startMix(decks.B);};
 $('#mixLen').value=S.settings.mixLen;$('#mixLenVal').textContent=S.settings.mixLen+'s';
 $('#mixLen').oninput=e=>{S.settings.mixLen=+e.target.value;$('#mixLenVal').textContent=e.target.value+'s';save();};
@@ -1122,13 +1551,15 @@ document.addEventListener('keydown',e=>{
   if(e.target.closest('input,textarea,select')||$('#overlay').classList.contains('show'))return;
   const k=e.key.toLowerCase();
   if(k==='q'){ac();decks.A.toggle();}else if(k==='p'){ac();decks.B.toggle();}
-  else if(k==='arrowleft'){mixing=null;setXfade(xf-0.05);}else if(k==='arrowright'){mixing=null;setXfade(xf+0.05);}
+  else if(k==='arrowleft'){cancelMix();setXfade(xf-0.05);}else if(k==='arrowright'){cancelMix();setXfade(xf+0.05);}
+  else if('1234'.includes(k)&&k)decks.A.toggleStem(+k-1);else if('7890'.includes(k)&&k)decks.B.toggleStem('7890'.indexOf(k));
   else if(k==='m'){ac();const m=master();if(m)startMix(other(m));}
 });
 
 /* ================= boot ================= */
 if(location.protocol==='file:')$('#fileBanner').style.display='block';
-setXfade(0);renderMode();renderWeights();renderLibrary();refresh();
+setXfade(0.5);renderMode();renderWeights();renderLibrary();refresh();
+for(const t of S.tracks)if(t.source==='soundcloud'&&t.stems)t.stems=false;
 for(const t of S.tracks)if(t.source==='local')idb.get(t.id).then(f=>{if(f)localFiles.set(t.id,f);});
 spHandleRedirect();
 requestAnimationFrame(tick);
